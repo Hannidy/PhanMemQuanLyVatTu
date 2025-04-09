@@ -53,18 +53,19 @@ public class TaiKhoanDAO{
     }
     
     public void update(model_TaiKhoan tk) {
-        String sql = "UPDATE VATTU SET TaiKhoan = ?, MatKhau = ? WHERE MaNhanVien = ?";
-        JDBCHelper.update(sql, tk.getTaiKhoan(),
-                               tk.getMatKhau(),
+        String sql = "UPDATE TAIKHOAN SET  TrangThai = ? WHERE MaNhanVien = ?";
+        JDBCHelper.update(sql, 
+                               tk.getTrangThai(),
                                tk.getMaNhanVien());
 
     }
     
     public void updateByAdmin(model_TaiKhoan tk) {
-        String sql = "UPDATE VATTU SET TaiKhoan = ?, MatKhau = ?, TrangThai = ? WHERE MaNhanVien = ?";
+        String sql = "UPDATE TAIKHOAN SET TaiKhoan = ?, MatKhau = ?, TrangThai = ? WHERE MaNhanVien = ?";
         JDBCHelper.update(sql, tk.getTaiKhoan(),
                                tk.getMatKhau(),
-                               tk.getTrangThai());
+                               tk.getTrangThai(),
+                               tk.getMaNhanVien());
     }
 
     public void delete(String maNhanVien) {
@@ -79,34 +80,29 @@ public class TaiKhoanDAO{
     }
 
     public List<model_TaiKhoan>selectByKeyWord(String keyWord, String columnTaiKhoan){
-//        String sql1 = "SELECT * FROM VATTU WHERE MaTaiKhoan LIKE ?";
-//        String sql2 = "SELECT * FROM VATTU WHERE TenTaiKhoan LIKE ?";
-//        String sql3 = "SELECT * FROM VATTU WHERE SoLuong LIKE ?";
-//        String sql4 = "SELECT * FROM VATTU WHERE DonViTinh LIKE ?";
-//        String sql5 = "SELECT * FROM VATTU WHERE MaKho LIKE ?";
-//        String sql6 = "SELECT * FROM VATTU WHERE"
-//                + " MaTaiKhoan LIKE ? OR "
-//                + " TenTaiKhoan LIKE ? OR "
-//                + " SoLuong LIKE ? OR "
-//                + " DonViTinh LIKE ? OR "
-//                + " MaKho LIKE ?";
-//        
-//        String keyWord_2 = "%" + keyWord + "%";
-//        if(columnTaiKhoan.equals("Mã Vật Tư")){
-//            return this.selectBySQL(sql1, keyWord_2);
-//        }else if(columnTaiKhoan.equals("Tên Vật Tư")){
-//            return this.selectBySQL(sql2, keyWord_2);
-//        }else if(columnTaiKhoan.equals("Số Lượng")){
-//            return this.selectBySQL(sql3, keyWord_2);
-//        }else if(columnTaiKhoan.equals("Đơn Vụ Tính")){
-//            return this.selectBySQL(sql4, keyWord_2);
-//        }else if(columnTaiKhoan.equals("Mã Kho")){
-//            return this.selectBySQL(sql5, keyWord_2);
-//        }else{
-//            return this.selectBySQL(sql6, keyWord_2, keyWord_2, keyWord_2, keyWord_2, keyWord_2);
-//        }
+        String sql1 = "SELECT * FROM TAIKHOAN WHERE TaiKhoan LIKE ?";
+        String sql2 = "SELECT * FROM TAIKHOAN WHERE MatKhau LIKE ?";
+        String sql3 = "SELECT * FROM TAIKHOAN WHERE MaNhanVien LIKE ?";
+        String sql4 = "SELECT * FROM TAIKHOAN WHERE TrangThai LIKE ?";
+        String sql5 = "SELECT * FROM TAIKHOAN WHERE"
+                + " TaiKhoan LIKE ? OR "
+                + " MatKhau LIKE ? OR "
+                + " MaNhanVien LIKE ? OR "
+                + " TrangThai LIKE ? ";
         
-          return null;
+        String keyWord_2 = "%" + keyWord + "%";
+        if(columnTaiKhoan.equals("Tài Khoản")){
+            return this.selectBySQL(sql1, keyWord_2);
+        }else if(columnTaiKhoan.equals("Mật Khẩu")){
+            return this.selectBySQL(sql2, keyWord_2);
+        }else if(columnTaiKhoan.equals("Mã Nhân Viên")){
+            return this.selectBySQL(sql3, keyWord_2);
+        }else if(columnTaiKhoan.equals("Trạng Thái")){
+            return this.selectBySQL(sql4, keyWord_2);
+        }else{
+            return this.selectBySQL(sql5, keyWord_2, keyWord_2, keyWord_2, keyWord_2);
+        }
+        
     }
 
     public List<model_TaiKhoan> selectAll() {

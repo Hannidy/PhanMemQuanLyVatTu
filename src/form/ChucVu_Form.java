@@ -3,7 +3,9 @@ package form;
 import dao.ChucVuDAO;
 import entity.model_ChucVu;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.JOptionPane;
 import javax.swing.table.DefaultTableModel;
@@ -121,6 +123,24 @@ public class ChucVu_Form extends TabbedForm {
             }
         }
     }
+    
+    
+    public Set<String> getDanhSachMaChucvu() {
+        Set<String> dsMaLoai = new HashSet<>();
+        for (int i = 0; i < tbl_chucVu.getRowCount(); i++) {
+            String maLoai = tbl_chucVu.getValueAt(i, 0).toString();
+            dsMaLoai.add(maLoai);
+        }
+        return dsMaLoai;
+    }
+    
+    
+    
+    
+    
+    
+    
+    
 
     @SuppressWarnings("unchecked")
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
@@ -250,12 +270,10 @@ public class ChucVu_Form extends TabbedForm {
     }//GEN-LAST:event_tbl_chucVuMouseClicked
 
     private void btn_xoaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btn_xoaActionPerformed
-        // TODO add your handling code here:
         deleteChucVu();
     }//GEN-LAST:event_btn_xoaActionPerformed
 
     private void btn_suaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btn_suaActionPerformed
-        // TODO add your handling code here:
         updateChucVu();
     }//GEN-LAST:event_btn_suaActionPerformed
 
@@ -269,7 +287,6 @@ public class ChucVu_Form extends TabbedForm {
     @Override
     public boolean formClose() {
         return true;
-
     }
 
     @Override

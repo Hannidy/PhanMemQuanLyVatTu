@@ -2,6 +2,7 @@
 package main;
 
 import com.formdev.flatlaf.FlatLaf;
+import com.formdev.flatlaf.FlatLightLaf;
 import com.formdev.flatlaf.fonts.roboto.FlatRobotoFont;
 import com.formdev.flatlaf.themes.FlatMacDarkLaf;
 import drawer.MyDrawerBuilder;
@@ -14,7 +15,7 @@ import manager.FormsManager;
 import raven.drawer.Drawer;
 import raven.popup.GlassPanePopup;
 import raven.toast.Notifications;
-import tabbed.WindowsTabbed;
+import tabbed.WindowsTabbed;  
 
 public class Main extends javax.swing.JFrame {
 
@@ -53,7 +54,6 @@ public class Main extends javax.swing.JFrame {
         body = new javax.swing.JPanel();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
-        setPreferredSize(new java.awt.Dimension(1500, 1000));
 
         body.setLayout(new java.awt.BorderLayout());
 
@@ -76,7 +76,7 @@ public class Main extends javax.swing.JFrame {
         FlatRobotoFont.install();
         FlatLaf.registerCustomDefaultsSource("themes");
         UIManager.put("defaultFont", new Font(FlatRobotoFont.FAMILY, Font.PLAIN, 13));
-        FlatMacDarkLaf.setup();
+        FlatLightLaf.setup();
         
         java.awt.EventQueue.invokeLater(new Runnable() {
             public void run() {

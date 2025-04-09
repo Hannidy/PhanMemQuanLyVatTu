@@ -256,8 +256,9 @@ public class MyDrawerBuilder extends SimpleDrawerBuilder{
             case "Đăng Xuất" -> {
                 System.out.println("→ Đăng xuất...");
                 Auth.dangXuat();
+                // Mở form đăng nhập
                 new DangNhap_Form().setVisible(true);
-
+                
                 // Dùng JFrame hiện tại để đóng form cũ
                 JFrame current = FormsManager.getInstance().getMain();
                 if (current != null) current.dispose();

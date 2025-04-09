@@ -3,7 +3,9 @@ package form;
 import dao.PhongBanDAO;
 import entity.model_PhongBan;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import javax.swing.JOptionPane;
 import javax.swing.table.DefaultTableModel;
 import tabbed.TabbedForm;
@@ -129,6 +131,18 @@ public class PhongBan_Form extends TabbedForm {
             }
         }
     }
+    
+    public Set<String> getDanhSachMaPhongBan() {
+        Set<String> dsMaLoai = new HashSet<>();
+        for (int i = 0; i < tbl_phongBan.getRowCount(); i++) {
+            String maLoai = tbl_phongBan.getValueAt(i, 0).toString();
+            dsMaLoai.add(maLoai);
+        }
+        return dsMaLoai;
+    }
+    
+    
+    
 
     @SuppressWarnings("unchecked")
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents

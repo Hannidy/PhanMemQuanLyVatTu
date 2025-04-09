@@ -34,9 +34,9 @@ public class VatTuDAO {
                 vt.getMavatTu());     // Chuyển tham số này xuống đúng vị trí
     }
 
-    public void delete(String maNhanVien) {
+    public void delete(String maVatTu) {
         String sql = "DELETE FROM VATTU WHERE MaVatTu = ?";
-        JDBCHelper.update(sql, maNhanVien);
+        JDBCHelper.update(sql, maVatTu);
     }
 
     public String selectMaxId() {

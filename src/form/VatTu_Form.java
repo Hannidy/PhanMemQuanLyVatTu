@@ -53,7 +53,6 @@ public class VatTu_Form extends TabbedForm {
 
     }
     // Hiển thị danh sách vật tư lên bảng
-
     public void fillToTableVatTu() {
         try {
             // Xóa toàn bộ dữ liệu cũ trước khi thêm mới
@@ -414,7 +413,6 @@ public class VatTu_Form extends TabbedForm {
     }//GEN-LAST:event_btn_suaActionPerformed
 
     private void btn_themActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btn_themActionPerformed
-        // TODO add your handling code here:
         LoaiVatTu_Form lvt = new LoaiVatTu_Form();
         Set<String> dsMaLoai = lvt.getDanhSachMaLoai();
 

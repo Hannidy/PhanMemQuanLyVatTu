@@ -46,11 +46,13 @@ public class AuthDAO {
 
     public ResultSet layThongTinNguoiDung(String taiKhoan) {
         String sql = """
-            SELECT nv.MaNhanVien, nv.TenNhanVien, nv.HinhAnh,
-                   cv.MaChucVu, cv.TenChucVu
-            FROM TaiKhoan tk
-            JOIN NhanVien nv ON tk.MaNhanVien = nv.MaNhanVien
-            JOIN ChucVu cv ON nv.MaChucVu = cv.MaChucVu
+            SELECT nv.MaNhanVien, nv.TenNhanVien, nv.Email, nv.SoDienThoai,
+                   nv.HinhAnh, nv.MaChucVu, cv.TenChucVu,
+                   pb.TenPhongBan
+            FROM TAIKHOAN tk
+            JOIN NHANVIEN nv ON tk.MaNhanVien = nv.MaNhanVien
+            JOIN CHUCVU cv ON nv.MaChucVu = cv.MaChucVu
+            LEFT JOIN PHONGBAN pb ON nv.MaPhongBan = pb.MaPhongBan
             WHERE tk.TaiKhoan = ?
         """;
         return JDBCHelper.query(sql, taiKhoan);

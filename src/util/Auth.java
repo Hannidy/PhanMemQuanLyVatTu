@@ -23,6 +23,10 @@ public class Auth {
     public static String hinhAnh;
     public static String maChucVu;
     public static String tenChucVu;
+    public static String email;
+    public static String soDienThoai;
+    public static String tenPhongBan;
+
     
     // Danh sách quyền: QuanLy -> (Xem, Them, Sua, Xoa, XuatExcel)
     private static Map<String, Map<String, Boolean>> quyenHan = new HashMap<>();
@@ -50,19 +54,24 @@ public class Auth {
     
     // Gán thông tin người dùng sau khi đăng nhập
     public static void ganThongtinNguoiDung(String taiKhoan) {
-        try {
-            ResultSet rs = authdao.layThongTinNguoiDung(taiKhoan);
-            if (rs.next()) {
-                maNhanVien = rs.getString("MaNhanVien");
-                tenNhanVien = rs.getString("TenNhanVien");
-                hinhAnh = rs.getString("HinhAnh");
-                maChucVu = rs.getString("MaChucVu");
-                tenChucVu = rs.getString("TenChucVu");
-            }
-        } catch (Exception e) {
-            Notifications.getInstance().show(Notifications.Type.ERROR, "Lỗi lấy thông tin người dùng: " + e.getMessage());
+    try {
+        ResultSet rs = authdao.layThongTinNguoiDung(taiKhoan); // SELECT như ở trên
+        if (rs.next()) {
+            maNhanVien = rs.getString("MaNhanVien");
+            tenNhanVien = rs.getString("TenNhanVien");
+            email = rs.getString("Email");
+            soDienThoai = rs.getString("SoDienThoai");
+            hinhAnh = rs.getString("HinhAnh");
+            maChucVu = rs.getString("MaChucVu");
+            tenChucVu = rs.getString("TenChucVu");
+            tenPhongBan = rs.getString("TenPhongBan");
         }
+    } catch (Exception e) {
+        Notifications.getInstance().show(Notifications.Type.ERROR, "Lỗi lấy thông tin người dùng: " + e.getMessage());
     }
+}
+
+
 
     // Đăng xuất
     public static void dangXuat() {
@@ -104,5 +113,18 @@ public class Auth {
     public static String getTenChucVu() {
         return tenChucVu;
     }
+    public static String getEmail() {
+    return email != null ? email : "";
+    }
+
+    public static String getSoDienThoai() {
+        return soDienThoai != null ? soDienThoai : "";
+    }
+
+    public static String getTenPhongBan() {
+        return tenPhongBan != null ? tenPhongBan : "";
+    }
+
+
 
 }

@@ -126,12 +126,12 @@ public class ChucVu_Form extends TabbedForm {
     
     
     public Set<String> getDanhSachMaChucvu() {
-        Set<String> dsMaLoai = new HashSet<>();
+        Set<String> dsMaLoaiCV = new HashSet<>();
         for (int i = 0; i < tbl_chucVu.getRowCount(); i++) {
             String maLoai = tbl_chucVu.getValueAt(i, 0).toString();
-            dsMaLoai.add(maLoai);
+            dsMaLoaiCV.add(maLoai);
         }
-        return dsMaLoai;
+        return dsMaLoaiCV;
     }
     
     

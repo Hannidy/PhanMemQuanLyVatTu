@@ -26,7 +26,7 @@ public class Dialog_QuyenHan extends javax.swing.JDialog {
     private List<model_QuyenHan> list_QuyenHan = new ArrayList<model_QuyenHan>();
     private QuyenHan_Form pnQuyenHanRef;
 
-    public Dialog_QuyenHan(java.awt.Frame parent, boolean modal  ,QuyenHan_Form parentPanel, Set<String> dsMaLoai) {
+    public Dialog_QuyenHan(java.awt.Frame parent, boolean modal  ,QuyenHan_Form parentPanel, Set<String> dsMaLoaiCV) {
         super(parent, modal);
         initComponents();
         this.pnQuyenHanRef = parentPanel ;
@@ -34,7 +34,7 @@ public class Dialog_QuyenHan extends javax.swing.JDialog {
         
          // Cập nhật lại combobox;
         cbo_maCV.removeAllItems();
-        for (String maLoai : dsMaLoai) {
+        for (String maLoai : dsMaLoaiCV) {
             cbo_maCV.addItem(maLoai);
         }
         cbo_maCV.revalidate();

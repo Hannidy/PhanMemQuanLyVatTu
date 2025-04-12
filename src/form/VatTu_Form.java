@@ -3,6 +3,7 @@ package form;
 import com.formdev.flatlaf.FlatClientProperties;
 import dao.VatTuDAO;
 import entity.model_VatTu;
+import java.awt.Color;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -32,7 +33,6 @@ public class VatTu_Form extends TabbedForm {
         addSearchFilter();
         addSearchButtonAction();
         tbl_ModelVatTu = (DefaultTableModel) tbl_vatTu.getModel();
-        //iniSetEnabledButton();
         fillToTableVatTu();
         styleUI();
     }
@@ -286,6 +286,7 @@ public class VatTu_Form extends TabbedForm {
         btn_them = new javax.swing.JButton();
         btn_sua = new javax.swing.JButton();
         cbo_timKiem = new javax.swing.JComboBox<>();
+        btn_bell = new javax.swing.JButton();
 
         tbl_vatTu.setModel(new javax.swing.table.DefaultTableModel(
             new Object [][] {
@@ -351,6 +352,8 @@ public class VatTu_Form extends TabbedForm {
             }
         });
 
+        btn_bell.setIcon(new javax.swing.ImageIcon(getClass().getResource("/drawer/image/icon.png"))); // NOI18N
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
         this.setLayout(layout);
         layout.setHorizontalGroup(
@@ -361,7 +364,8 @@ public class VatTu_Form extends TabbedForm {
                     .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 934, Short.MAX_VALUE)
                     .addGroup(layout.createSequentialGroup()
                         .addComponent(jLabel1)
-                        .addGap(0, 0, Short.MAX_VALUE))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addComponent(btn_bell, javax.swing.GroupLayout.PREFERRED_SIZE, 49, javax.swing.GroupLayout.PREFERRED_SIZE))
                     .addGroup(layout.createSequentialGroup()
                         .addComponent(btn_timKiem)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
@@ -380,7 +384,9 @@ public class VatTu_Form extends TabbedForm {
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(jLabel1)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(jLabel1)
+                    .addComponent(btn_bell))
                 .addGap(18, 18, 18)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
@@ -450,6 +456,7 @@ public class VatTu_Form extends TabbedForm {
 
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JButton btn_bell;
     private javax.swing.JButton btn_sua;
     private javax.swing.JButton btn_them;
     private javax.swing.JButton btn_timKiem;

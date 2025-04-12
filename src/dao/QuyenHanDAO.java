@@ -36,9 +36,9 @@ JDBCHelper.update(sql,
         qh.getMachucvu());
 }
 
-    public void delete(String maChucVu) {
+    public void delete(String maCV) {
         String sql = "DELETE FROM ChuCVu WHERE MaChucVu = ?";
-        JDBCHelper.update(sql, maChucVu);
+        JDBCHelper.update(sql, maCV);
     }
     
     public String selectMaxId() {

@@ -82,7 +82,9 @@ public class JDBCHelper {
      * Thực hiện câu lệnh SQL truy vấn (SELECT) hoặc thủ tục lưu truy vấn dữ liệu
      * @param sql là câu lệnh SQL chứa có thể chứa tham số. Nó có thể là một lời gọi thủ tục lưu
      * @param args là danh sách các giá trị được cung cấp cho các tham số trong câu lệnh sql
-     */    
+     */  
+    
+    
     public static ResultSet query(String sql, Object...args) {
         try {
             PreparedStatement pstmt = JDBCHelper.getStmt(sql, args);
@@ -93,19 +95,21 @@ public class JDBCHelper {
             throw new RuntimeException(e);
         }
     }
+    
+
+   public static ResultSet executeQuery(String sql, Object... args) {
+    try {
+        PreparedStatement stmt = getStmt(sql, args); // ← dùng đúng tên hàm này
+        return stmt.executeQuery();
+    } catch (Exception e) {
+        e.printStackTrace();
+        throw new RuntimeException(e);
+    }
+}
+
+    
 }
     
-//    public static Object value(String sql, Object...args) {
-//        try {
-//            ResultSet rs = XJdbc.query(sql, args);
-//            if(rs.next()){
-//                return rs.getObject(0);
-//            }
-//            rs.getStatement().getConnection().close();
-//            return null;
-//        } catch (Exception e) {
-//            throw new RuntimeException(e);
-//        }
-//    }
-//
-//}
+
+
+

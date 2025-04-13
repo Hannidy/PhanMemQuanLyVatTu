@@ -36,5 +36,11 @@ public class model_LoaiVatTu {
         this.tenloaivatTu = tenloaivatTu;
     }
     
+    // Override toString() để hiển thị tên loại vật tư trong JComboBox
+    @Override
+    public String toString() {
+        return tenloaivatTu != null ? tenloaivatTu : "Không có tên";
+    }
+    
     
 }

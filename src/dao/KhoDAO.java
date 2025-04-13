@@ -69,28 +69,20 @@ public class KhoDAO {
     protected List<model_Kho> selectBySQL(String sql, Object... args) {
         List<model_Kho> list_Kho = new ArrayList<>();
         ResultSet rs = null;
-
         try {
             rs = JDBCHelper.query(sql, args);
             while (rs.next()) {
                 model_Kho kho = new model_Kho();
-                kho.setMaKho(rs.getString("MaKho")); // Lấy Mã Vật Tư
-                kho.setTenKho(rs.getString("TenKho")); // Lấy Tên Vật Tư
-                kho.setMaloaivatTu(rs.getString("MaLoaiVatTu")); // Lấy Mã Loại Vật Tư
-                kho.setDiaChi(rs.getString("DiaChi")); // Lấy Mã Loại Vật Tư
-
+                kho.setMaKho(rs.getString("MaKho"));
+                kho.setTenKho(rs.getString("TenKho"));
+                kho.setMaloaivatTu(rs.getString("MaLoaiVatTu"));
+                kho.setDiaChi(rs.getString("DiaChi"));
                 list_Kho.add(kho);
             }
         } catch (SQLException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("Lỗi truy vấn Kho: " + e.getMessage());
         } finally {
-            try {
-                if (rs != null) {
-                    rs.getStatement().close(); // Đóng Statement trước
-                    rs.close(); // Đóng ResultSet sau
-                }
-            } catch (SQLException e) {
-            }
+            JDBCHelper.close(rs);
         }
         return list_Kho;
     }

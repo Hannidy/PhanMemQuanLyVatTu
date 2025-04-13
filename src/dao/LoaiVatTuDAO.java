@@ -10,12 +10,11 @@ import util.JDBCHelper;
 public class LoaiVatTuDAO {
 
     public void insert(model_LoaiVatTu lvt) {
-        // Đảm bảo mã đã được gán trước khi insert
-        if (lvt.getMaloaivatTu() == null) {
-            throw new IllegalStateException("Mã vật tư chưa được sinh!");
-        }
         String sql = "INSERT INTO LOAIVATTU (MaLoaiVatTu, TenLoaiVatTu) VALUES (?, ?)";
-        JDBCHelper.update(sql, lvt.getMaloaivatTu(), lvt.getTenloaivatTu());
+        String newMaLoaiVatTu = this.selectMaxId(); // Lấy mã loại vật tư mới tự động
+        JDBCHelper.update(sql,
+                newMaLoaiVatTu,
+                lvt.getTenloaivatTu());
     }
 
     public void update(model_LoaiVatTu lvt) {
@@ -31,22 +30,23 @@ public class LoaiVatTuDAO {
     }
 
     public String selectMaxId() {
-        String sql = "SELECT MAX(CAST(SUBSTRING(MaLoaiVatTu, 4, LEN(MaLoaiVatTu)-3) AS INT)) FROM LOAIVATTU WHERE MaLoaiVatTu LIKE 'LVT[0-9]%'";
-        String newMaLoaiVatTu = "LVT01";
+        String sql = "SELECT MAX(CAST(SUBSTRING(MaLoaiVatTu, 4, LEN(MaLoaiVatTu)-3) AS INT)) FROM LOAIVATTU";
+        String newMaLoaiVatTu = "LVT01";// Mặc định nếu bảng rỗng.
         try {
             ResultSet rs = JDBCHelper.query(sql);
             if (rs == null) {
                 System.out.println("⚠ Không thể lấy dữ liệu: ResultSet trả về null.");
                 return newMaLoaiVatTu;
             }
-            if (rs.next()) {
-                int maxMaLoaiVatTu = rs.getInt(1);
-                if (maxMaLoaiVatTu > 0) {
-                    newMaLoaiVatTu = "LVT" + (maxMaLoaiVatTu + 1);
-                }
+            if (rs.next() && rs.getObject(1) != null) {
+                int maxLoaiMaVatTu = rs.getInt(1);
+                newMaLoaiVatTu = "LVT" + (maxLoaiMaVatTu + 1); // Tạo NV tiếp theo
+            }
+            if (rs != null && rs.getObject(1) != null) {
+                rs.getStatement().getConnection().close();
             }
         } catch (SQLException e) {
-            throw new RuntimeException("Lỗi khi lấy mã vật tư mới nhất: " + e.getMessage());
+            throw new RuntimeException(e);
         }
         return newMaLoaiVatTu;
     }

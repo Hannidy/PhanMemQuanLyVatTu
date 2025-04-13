@@ -56,5 +56,11 @@ public class model_Kho {
         this.diaChi = diaChi;
     }
     
+    // Override toString() để hiển thị tên kho trong JComboBox
+    @Override
+    public String toString() {
+        return tenKho != null ? tenKho : "Không có tên";
+    }
+    
     
 }

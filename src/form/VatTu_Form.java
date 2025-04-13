@@ -51,6 +51,7 @@ public class VatTu_Form extends TabbedForm {
         initComponents();
         initSearchComboBox();
         addSearchFilter();
+        searchFilter();
         addSearchButtonAction();
         tbl_ModelVatTu = (DefaultTableModel) tbl_vatTu.getModel();
         fillToTableVatTu();

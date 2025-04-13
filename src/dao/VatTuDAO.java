@@ -18,12 +18,12 @@ import util.JDBCHelper;
 public class VatTuDAO {
 
     public void insert(model_VatTu vt) {
+        // Đảm bảo mã đã được gán trước khi insert
+        if (vt.getMavatTu() == null) {
+            throw new IllegalStateException("Mã vật tư chưa được sinh!");
+        }
         String sql = "INSERT INTO VATTU (MaVatTu, TenVatTu, MaLoaiVatTu) VALUES (?, ?, ?)";
-        String newMaVatTu = this.selectMaxId(); // Lấy mã vật tư mới
-        JDBCHelper.update(sql,
-                newMaVatTu,
-                vt.getTenVatTu(),
-                vt.getMaloaivatTu()); // Sửa dấu chấm phẩy thành dấu đóng ngoặc
+        JDBCHelper.update(sql, vt.getMavatTu(), vt.getTenVatTu(), vt.getMaloaivatTu());
     }
 
     public void update(model_VatTu vt) {
@@ -40,23 +40,22 @@ public class VatTuDAO {
     }
 
     public String selectMaxId() {
-        String sql = "SELECT MAX(CAST(SUBSTRING(MaVatTu, 3, LEN(MaVatTu)-2) AS INT)) FROM VATTU";
-        String newMaVatTu = "VT1";// Mặc định nếu bảng rỗng.
+        String sql = "SELECT MAX(CAST(SUBSTRING(MaVatTu, 3, LEN(MaVatTu)-2) AS INT)) FROM VATTU WHERE MaVatTu LIKE 'VT[0-9]%'";
+        String newMaVatTu = "VT01";
         try {
             ResultSet rs = JDBCHelper.query(sql);
             if (rs == null) {
                 System.out.println("⚠ Không thể lấy dữ liệu: ResultSet trả về null.");
                 return newMaVatTu;
             }
-            if (rs.next() && rs.getObject(1) != null) {
+            if (rs.next()) {
                 int maxMaVatTu = rs.getInt(1);
-                newMaVatTu = "VT" + (maxMaVatTu + 1); // Tạo NV tiếp theo
-            }
-            if (rs != null && rs.getObject(1) != null) {
-                rs.getStatement().getConnection().close();
+                if (maxMaVatTu > 0) {
+                    newMaVatTu = "VT" + (maxMaVatTu + 1);
+                }
             }
         } catch (SQLException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("Lỗi khi lấy mã vật tư mới nhất: " + e.getMessage());
         }
         return newMaVatTu;
     }

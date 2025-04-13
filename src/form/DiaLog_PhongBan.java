@@ -11,7 +11,12 @@ import dao.PhongBanDAO;
 import entity.model_PhongBan;
 import java.awt.Color;
 import java.awt.Font;
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import javax.swing.BorderFactory;
 import javax.swing.JOptionPane;
@@ -31,6 +36,13 @@ public class DiaLog_PhongBan extends javax.swing.JDialog {
     public PhongBanDAO pbdao = new PhongBanDAO();
     public List<model_PhongBan> list_PB = new ArrayList<model_PhongBan>();
     private PhongBan_Form pnPBRef;
+
+    private static final String LOG_FILE = "phongban_log.txt";
+    // Danh sách lưu trữ thông báo
+    private List<String> actionLogs = new ArrayList<>();
+    // Biến đếm số lượng thông báo
+    private int notificationCount = 0;
+    private static final long TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000; // 24 tiếng tính bằng milliseconds
 
     /**
      * Creates new form DiaLog_PhongBan
@@ -79,69 +91,101 @@ public class DiaLog_PhongBan extends javax.swing.JDialog {
         txt_matruongPhong.setText("");
     }
 
-    public void addPhongBan() {
+    
+    
+     public void addPhongban() {
         boolean isValid = true;
 
-        // Reset viền trước khi kiểm tra
-        resetBorder(txt_tenphongBan);
-        resetBorder(txt_diaChi); // Chỉ cần kiểm tra TenVatTu và MaLoaiVatTu
-        resetBorder(txt_matruongPhong);
+        resetBorder(this.txt_tenphongBan);
+        resetBorder(this.txt_diaChi);
+        resetBorder(this.txt_matruongPhong);
 
-        // Kiểm tra từng field
-        String tenPB = txt_tenphongBan.getText().trim();
-        if (tenPB.isEmpty()) {
+        String tenPhongban = txt_tenphongBan.getText().trim();
+        if (tenPhongban.isEmpty()) {
             setErrorBorder(txt_tenphongBan);
             isValid = false;
         }
-        if (txt_diaChi.getText().trim().isEmpty()) {
+        
+        String diaChi = txt_diaChi.getText().trim();
+        if (diaChi.isEmpty()) {
             setErrorBorder(txt_diaChi);
             isValid = false;
         }
-
-        if (txt_matruongPhong.getText().trim().isEmpty()) {
+        
+        String maTruongPhong = txt_matruongPhong.getText().trim();
+        if (maTruongPhong.isEmpty()) {
             setErrorBorder(txt_matruongPhong);
             isValid = false;
         }
 
-        // Nếu có lỗi, hiển thị thông báo và dừng lại
         if (!isValid) {
-            Notifications.getInstance().show(Notifications.Type.INFO,"Vui lòng nhập đủ thông tin!");
+            Notifications.getInstance().show(Notifications.Type.INFO, "Vui lòng nhập đủ thông tin!");
             return;
         }
 
-        // 🔎 Kiểm tra tên đã tồn tại chưa
-        if (pbdao.isTenLoaiVatTuExist(tenPB)) {
-            Notifications.getInstance().show(Notifications.Type.INFO,"Tên loại vật tư đã tồn tại!");
+        if (pbdao.isTenPhongBanExist(tenPhongban)) {
+            Notifications.getInstance().show(Notifications.Type.INFO, "Tên phòng ban đã tồn tại!");
             setErrorBorder(txt_tenphongBan);
             return;
         }
 
-        // Nếu hợp lệ, tiếp tục thêm vật tư
         model_PhongBan pb = new model_PhongBan();
-        pb.setTenphongBan(txt_tenphongBan.getText().trim());
-        pb.setDiaChi(txt_diaChi.getText().trim()); // Chỉ thêm MaLoaiVatTu
-        pb.setMatruongPhong(txt_matruongPhong.getText().trim());
+        pb.setTenphongBan(tenPhongban);
+        pb.setDiaChi(diaChi);
+        pb.setMatruongPhong(maTruongPhong);
+        
 
         try {
-            pbdao.insert(pb);
-            Notifications.getInstance().show(Notifications.Type.SUCCESS,"Thêm vật tư thành công!");
+            // Sinh mã vật tư trước khi insert
+            String maPB = pbdao.selectMaxId();
+            pb.setMaphongBan(maPB); // Gán mã vào vt
+            pbdao.insert(pb); // Thêm vào CSDL
 
-            // 🔔 Cập nhật bảng trong pnVatTu
+            Notifications.getInstance().show(Notifications.Type.SUCCESS, "Thêm phòng ban thành công!");
+
+            // Ghi log
+            String log = String.format("Thêm|%s|%s|%s|%s|%s",
+                    maPB,
+                    tenPhongban,
+                    diaChi,
+                    maTruongPhong,
+                    new SimpleDateFormat("HH:mm:ss dd/MM/yyyy").format(new Date()));
+            writeLogToFile(log);
+
             if (pnPBRef != null) {
                 pnPBRef.fillToTablePhongBan();
-                //pnPBRef.thongke();
-                //pnPBRef.themThongBao("Thêm", pb.getTenPhongBan()); // Cập nhật thông báo
+               
             }
 
-            // Đợi thông báo hiển thị xong rồi mới đóng form
-            new Timer(1000, e -> dispose()).start();
+            new Timer(700, e -> dispose()).start();
 
         } catch (Exception e) {
-            Notifications.getInstance().show(Notifications.Type.INFO,"Lỗi: " + e.getMessage());
-            Notifications.getInstance().show(Notifications.Type.INFO,"Thêm vật tư thất bại!");
+            Notifications.getInstance().show(Notifications.Type.INFO, "Thêm phòng ban thất bại!");
+            String log = String.format("Thêm thất bại|%s|%s|%s|%s|%s",
+                    pb.getMaphongBan()!= null ? pb.getMaphongBan() : "N/A",
+                    tenPhongban,
+                    diaChi,
+                    maTruongPhong,
+                    new SimpleDateFormat("HH:mm:ss dd/MM/yyyy").format(new Date()));
+            writeLogToFile(log);
+            if (pnPBRef != null) {
+               
+            }
         }
     }
 
+    
+    //Ghi vào file
+    private void writeLogToFile(String log) {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(LOG_FILE, true))) {
+            writer.write(log);
+            writer.newLine();
+        } catch (IOException e) {
+            Notifications.getInstance().show(Notifications.Type.ERROR, "Lỗi khi ghi log: " + e.getMessage());
+        }
+    }
+
+    
     private void setErrorBorder(JTextField field) {
         field.setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, Color.RED)); // Gạch đỏ dưới
     }
@@ -250,7 +294,7 @@ public class DiaLog_PhongBan extends javax.swing.JDialog {
 
     private void btn_themActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btn_themActionPerformed
         // TODO add your handling code here:
-        addPhongBan();
+        addPhongban();
     }//GEN-LAST:event_btn_themActionPerformed
 
     private void btn_lamMoiActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btn_lamMoiActionPerformed

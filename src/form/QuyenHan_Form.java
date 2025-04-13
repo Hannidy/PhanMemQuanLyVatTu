@@ -8,12 +8,15 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Pattern;
 import javax.swing.DefaultCellEditor;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.JComboBox;
 import javax.swing.JOptionPane;
+import javax.swing.RowFilter;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableColumn;
+import javax.swing.table.TableRowSorter;
 import raven.toast.Notifications;
 import tabbed.TabbedForm;
 import util.Message;
@@ -27,66 +30,60 @@ public class QuyenHan_Form extends TabbedForm {
     private ChucVuDAO cvDAO = new ChucVuDAO();
     private List<model_QuyenHan> list_QuyenHan = new ArrayList<model_QuyenHan>();
     
-    private String selectedmaCV = "";
-    private String selectedquanLy = "";
-    private String selectedXem = "";
-    private String selectedXuatexcel = "";
-    private String selectedthem = "";
-    private String selectedxoa = "";
-    private String selectedsua = "";
+    private String selectedMaCV = "";
+    private String selectedQuanLy = "";
+    private int selectedXem = 0;
+    private int selectedXuatExcel = 0;
+    private int selectedThem = 0;
+    private int selectedXoa = 0;
+    private int selectedSua = 0;
     
             
     public QuyenHan_Form() {
         initComponents();
         tbl_ModelQuyenHan = (DefaultTableModel) tbl_QuyenHan.getModel();   
-        fillToTableQuyenHan();
         initTable();
+        initSearchComboBox();
+        fillToTableQuyenHan();
+        searchFilter();
+        addSearchButtonAction();
     }
 
-    public void initTable(){
-                // Cho các cột 2 → 6 là combo 0/1
+    private void initTable() {
         String[] binaryValues = {"0", "1"};
         for (int i = 2; i <= 6; i++) {
             setComboBoxForColumn(i, binaryValues);
         }
 
-        // Cột 1 là danh sách quản lý (trạng thái)
         String[] quanLyOptions = {
-            "Quản Lý Vật Tư" ,
-            "Quản Lý Loại Vật Tư" ,
-            "Quản Lý Đơn Vị Tính" ,
-            "Quản Lý Vật Tư Lỗi - Bảo Hành" ,
-            "Quản lý Kho", "Quản Lý Kho - Loại Vật Tư",
-            "Quản Lý Tồn Kho", "Quản Lý Nhân Viên",
-            "Quản Lý Chức Vụ", "Quản Lý Quyền Hạn",
-            "Quản Lý Tài Khoản", "Quản Lý Phiếu Nhập",
-            "Quản Lý Phiếu Yêu Cầu Vật Tư", "Quản Lý Phiếu Xuất",
-            "Quản Lý Phòng Ban", "Quản Lý Nhà Cung Cấp",
+            "Quản Lý Vật Tư", "Quản Lý Loại Vật Tư", "Quản Lý Đơn Vị Tính",
+            "Quản Lý Vật Tư Lỗi - Bảo Hành", "Quản Lý Kho", "Quản Lý Kho - Loại Vật Tư",
+            "Quản Lý Tồn Kho", "Quản Lý Nhân Viên", "Quản Lý Chức Vụ", "Quản Lý Quyền Hạn",
+            "Quản Lý Tài Khoản", "Quản Lý Phiếu Nhập", "Quản Lý Phiếu Yêu Cầu Vật Tư",
+            "Quản Lý Phiếu Xuất", "Quản Lý Phòng Ban", "Quản Lý Nhà Cung Cấp",
             "Lịch Sử Hoạt Động"
         };
         setComboBoxForColumn(1, quanLyOptions);
-
     }
     
-    // Gán combo box cho một cột cụ thể của bảng với danh sách giá trị truyền vào
+    private void initSearchComboBox() {
+        String[] searchOptions = {
+            "Mã Chức Vụ", "Quản Lý"
+        };
+        cbo_timKiem.setModel(new DefaultComboBoxModel<>(searchOptions));
+    }
+    
     private void setComboBoxForColumn(int colIndex, String[] values) {
-        // Tạo ComboBox chứa các giá trị truyền vào
         JComboBox<String> comboBox = new JComboBox<>(values);
-        comboBox.setSelectedIndex(-1); // Không chọn mặc định ban đầu (nếu muốn)
-
-        // Gán ComboBox làm trình chỉnh sửa (editor) cho cột được chỉ định
+        comboBox.setSelectedIndex(-1);
         TableColumn column = tbl_QuyenHan.getColumnModel().getColumn(colIndex);
         column.setCellEditor(new DefaultCellEditor(comboBox));
     }
 
-
     // hiện danh sách quyền hạn lên 
     public void fillToTableQuyenHan() {
         try {
-            // Xóa toàn bộ dữ liệu cũ trước khi thêm mới
             tbl_ModelQuyenHan.setRowCount(0);
-
-            // Lấy danh sách vật tư từ database
             list_QuyenHan = qhdao.selectAll();
             if (list_QuyenHan != null) {
                 for (model_QuyenHan qh : list_QuyenHan) {
@@ -97,107 +94,219 @@ public class QuyenHan_Form extends TabbedForm {
                         qh.getXuatexcel(),
                         qh.getThem(),
                         qh.getXoa(),
-                        qh.getSua(),
+                        qh.getSua()
                     });
                 }
             }
-        } catch (Exception e) { // In lỗi để dễ debug
-            // In lỗi để dễ debug
-            JOptionPane.showMessageDialog(null, "Lỗi truy vấn dữ liệu: " + e.getMessage(),
-                    "Lỗi", JOptionPane.ERROR_MESSAGE);
-        }
-    }
-    
-    
-        public void deleteQuyenhan() {
-        int[] selectedRows = tbl_QuyenHan.getSelectedRows(); // Lấy tất cả các dòng được chọn
-
-        if (selectedRows.length == 0) {
-            Notifications.getInstance().show(Notifications.Type.INFO, "Chọn ít nhất một dòng để xóa!");
-            return;
-        }
-
-        boolean confirm = Message.confirm("Bạn có chắc chắn muốn xóa " + selectedRows.length + " quyền hạn ?");
-        if (!confirm) {
-            return;
-        }
-
-        try {
-            List<String> danhSachXoa = new ArrayList<>(); // Lưu các vật tư bị xóa để ghi vào thông báo
-
-            for (int i = selectedRows.length - 1; i >= 0; i--) { // Xóa từ dưới lên để tránh lỗi chỉ số
-                int row = selectedRows[i];
-                String maCV = tbl_QuyenHan.getValueAt(row, 0).toString();
-                cvDAO.delete(maCV); // Xóa từng vật tư
-                danhSachXoa.add(maCV); // Thêm vào danh sách để ghi nhận thông báo
-            }
-
-            fillToTableQuyenHan(); // Cập nhật lại bảng sau khi xóa
-            Notifications.getInstance().show(Notifications.Type.SUCCESS, "Đã xóa " + selectedRows.length + " quyền hạn !");
-
-            // 🔔 Cập nhật thông báo chuông sau khi hoàn tất tất cả các xóa
-            for (String maCV : danhSachXoa) {
-                //themThongBao("Xóa", maVatTu);
-            }
-
         } catch (Exception e) {
-            Notifications.getInstance().show(Notifications.Type.INFO, "Không thể xóa quyền hạn !");
+            Notifications.getInstance().show(Notifications.Type.ERROR, "Lỗi truy vấn dữ liệu: " + e.getMessage());
         }
     }
-        
-        
-        public void updateQuyenHan() {
+    
+    
+public void deleteQuyenhan() {
+    int[] selectedRows = tbl_QuyenHan.getSelectedRows();
+    if (selectedRows.length == 0) {
+        Notifications.getInstance().show(Notifications.Type.INFO, "Chọn ít nhất một dòng để xóa!");
+        return;
+    }
+
+    boolean confirm = Message.confirm("Bạn có chắc chắn muốn xóa " + selectedRows.length + " quyền hạn?");
+    if (!confirm) {
+        return;
+    }
+
+    int soLuongXoaThanhCong = 0;
+
+    try {
+        for (int row : selectedRows) {
+            String maCV = tbl_QuyenHan.getValueAt(row, 0) != null ? tbl_QuyenHan.getValueAt(row, 0).toString() : "";
+            String quanLy = tbl_QuyenHan.getValueAt(row, 1) != null ? tbl_QuyenHan.getValueAt(row, 1).toString() : "";
+
+            if (maCV.isEmpty() || quanLy.isEmpty()) {
+                Notifications.getInstance().show(Notifications.Type.WARNING,
+                        "Dữ liệu không hợp lệ tại dòng " + (row + 1) + "!");
+                continue;
+            }
+
+            if (qhdao.isReferenced(maCV)) {
+                Notifications.getInstance().show(Notifications.Type.WARNING,
+                        "Không thể xóa quyền hạn với mã " + maCV + " vì đang được sử dụng!");
+                continue;
+            }
+
+            qhdao.delete(maCV, quanLy);
+            soLuongXoaThanhCong++;
+        }
+
+        fillToTableQuyenHan();
+
+        if (soLuongXoaThanhCong > 0) {
+            Notifications.getInstance().show(Notifications.Type.SUCCESS,
+                    "Đã xóa thành công " + soLuongXoaThanhCong + " quyền hạn!");
+        } else {
+            Notifications.getInstance().show(Notifications.Type.INFO, "Không có quyền hạn nào được xóa.");
+        }
+    } catch (Exception e) {
+        Notifications.getInstance().show(Notifications.Type.ERROR, "Lỗi xóa quyền hạn: " + e.getMessage());
+    }
+}
+
+    
+ public void updateQuyenHan() {
         int row = tbl_QuyenHan.getSelectedRow();
         if (row < 0) {
             Notifications.getInstance().show(Notifications.Type.INFO, "Chọn một dòng để cập nhật!");
             return;
         }
 
-        // Lấy dữ liệu từ JTable chỉ với 3 cột
-        // Lấy dữ liệu từ JTable đúng kiểu
-        String maCV = tbl_QuyenHan.getValueAt(row, 0).toString();
-        String Quanly = tbl_QuyenHan.getValueAt(row, 1).toString();
-        int Xem = Integer.parseInt(tbl_QuyenHan.getValueAt(row, 2).toString().trim());
-        int Xuetexcel = Integer.parseInt(tbl_QuyenHan.getValueAt(row, 3).toString().trim());
-        int them = Integer.parseInt(tbl_QuyenHan.getValueAt(row, 4).toString().trim());
-        int xoa = Integer.parseInt(tbl_QuyenHan.getValueAt(row, 5).toString().trim());
-        int sua = Integer.parseInt(tbl_QuyenHan.getValueAt(row, 6).toString().trim());
-
-
-        // Kiểm tra nếu có ô nào bị bỏ trống
-        if (maCV.isEmpty() || Quanly.isEmpty()) {
-            Notifications.getInstance().show(Notifications.Type.INFO, "Vui lòng nhập đầy đủ thông tin!");
-            return;
-        }
-
-       // Tạo đối tượng quyền hạn mới
-        model_QuyenHan qh = new model_QuyenHan();
-        qh.setMachucvu(maCV);
-        qh.setQuanLy(Quanly);
-        qh.setXem(Xem);
-        qh.setXuatexcel(Xuetexcel);
-        qh.setThem(them);
-        qh.setXoa(xoa);
-        qh.setSua(sua);
-
-
-        // Xác nhận cập nhật
-        boolean confirm = Message.confirm("Bạn có chắc chắn muốn cập nhật quyền hạn có mã '" + maCV + "'?");
-        if (confirm) {
-            try {
-                qhdao.update(qh); // Cập nhật vào CSDL
-                fillToTableQuyenHan(); // Cập nhật lại bảng để hiển thị dữ liệu mới
-                Notifications.getInstance().show(Notifications.Type.SUCCESS, "Cập nhật quyền hạn thành công!");
-
-                // 🔔 Ghi nhận thông báo vào hệ thống chuông
-                //themThongBao("Cập nhật", tenVT);
-            } catch (Exception e) {
-                Message.error("Lỗi: " + e.getMessage());
-                Notifications.getInstance().show(Notifications.Type.INFO, "Cập nhật quyền hạn thất bại!");
+        try {
+            // Lấy giá trị ban đầu từ cơ sở dữ liệu
+            String maCVBeforeEdit = tbl_QuyenHan.getValueAt(row, 0) != null ? tbl_QuyenHan.getValueAt(row, 0).toString() : "";
+            String quanLyBeforeEdit = tbl_QuyenHan.getValueAt(row, 1) != null ? tbl_QuyenHan.getValueAt(row, 1).toString() : "";
+            model_QuyenHan originalQH = qhdao.selectById(maCVBeforeEdit, quanLyBeforeEdit);
+            if (originalQH == null) {
+                Notifications.getInstance().show(Notifications.Type.WARNING, 
+                    "Bản ghi với Mã Chức Vụ '" + maCVBeforeEdit + "' và Quản Lý '" + quanLyBeforeEdit + "' không tồn tại trong cơ sở dữ liệu!");
+                return;
             }
+            String originalMaCV = originalQH.getMachucvu();
+            String originalQuanLy = originalQH.getQuanLy();
+
+            // Lấy giá trị mới từ JTable
+            String maCV = tbl_QuyenHan.getValueAt(row, 0) != null ? tbl_QuyenHan.getValueAt(row, 0).toString() : "";
+            String quanLy = tbl_QuyenHan.getValueAt(row, 1) != null ? tbl_QuyenHan.getValueAt(row, 1).toString() : "";
+            int xem = parseTableValue(tbl_QuyenHan.getValueAt(row, 2));
+            int xuatExcel = parseTableValue(tbl_QuyenHan.getValueAt(row, 3));
+            int them = parseTableValue(tbl_QuyenHan.getValueAt(row, 4));
+            int xoa = parseTableValue(tbl_QuyenHan.getValueAt(row, 5));
+            int sua = parseTableValue(tbl_QuyenHan.getValueAt(row, 6));
+
+            if (maCV.isEmpty() || quanLy.isEmpty()) {
+                StringBuilder errorMsg = new StringBuilder("Vui lòng nhập đầy đủ thông tin: ");
+                if (maCV.isEmpty()) errorMsg.append("Mã Chức Vụ, ");
+                if (quanLy.isEmpty()) errorMsg.append("Quản Lý, ");
+                errorMsg.setLength(errorMsg.length() - 2);
+                Notifications.getInstance().show(Notifications.Type.INFO, errorMsg.toString());
+                return;
+            }
+
+            if (!maCV.equals(originalMaCV) || !quanLy.equals(originalQuanLy)) {
+                if (qhdao.isExist(maCV, quanLy)) {
+                    Notifications.getInstance().show(Notifications.Type.WARNING, 
+                        "Quyền hạn với Mã Chức Vụ '" + maCV + "' và Quản Lý '" + quanLy + "' đã tồn tại!");
+                    return;
+                }
+            }
+
+            model_QuyenHan qh = new model_QuyenHan();
+            qh.setMachucvu(maCV);
+            qh.setQuanLy(quanLy);
+            qh.setXem(xem);
+            qh.setXuatexcel(xuatExcel);
+            qh.setThem(them);
+            qh.setXoa(xoa);
+            qh.setSua(sua);
+
+            boolean confirm = Message.confirm("Bạn có chắc chắn muốn cập nhật quyền hạn có mã '" + maCV + "'?");
+            if (confirm) {
+                qhdao.update(qh, originalMaCV, originalQuanLy);
+                // Kiểm tra xem bản ghi có thực sự được cập nhật hay không
+                model_QuyenHan updatedQH = qhdao.selectById(maCV, quanLy);
+                if (updatedQH != null && updatedQH.getMachucvu().equals(maCV) && updatedQH.getQuanLy().equals(quanLy)) {
+                    fillToTableQuyenHan();
+                    Notifications.getInstance().show(Notifications.Type.SUCCESS, "Cập nhật quyền hạn thành công!");
+                } else {
+                    Notifications.getInstance().show(Notifications.Type.WARNING, 
+                        "Không thể cập nhật quyền hạn. Bản ghi không tồn tại hoặc dữ liệu không hợp lệ!");
+                }
+            }
+        } catch (Exception e) {
+            Notifications.getInstance().show(Notifications.Type.ERROR, "Lỗi cập nhật quyền hạn: " + e.getMessage());
+        }
+    }
+    
+    private int parseTableValue(Object value) {
+        if (value == null || value.toString().trim().isEmpty()) {
+            return 0;
+        }
+        try {
+            return Integer.parseInt(value.toString().trim());
+        } catch (NumberFormatException e) {
+            return 0;
         }
     }
 
+        private void addSearchButtonAction() {
+        btn_timKiem.addActionListener(e -> {
+            String selectedCriteria = (String) cbo_timKiem.getSelectedItem();
+            String keyword = txt_timKiem.getText().trim();
+
+            if (keyword.isEmpty()) {
+                Notifications.getInstance().show(Notifications.Type.INFO, "Vui lòng nhập từ khóa tìm kiếm!");
+                return;
+            }
+
+            int columnIndex = -1;
+
+            switch (selectedCriteria) {
+                case "Mã Chức Vụ":
+                    columnIndex = 0;
+                    break;
+                case "Quản Lý":
+                    columnIndex = 1;
+                    break;
+                
+            }
+
+            if (columnIndex == -1) {
+                Notifications.getInstance().show(Notifications.Type.INFO, "Tiêu chí tìm kiếm không hợp lệ!");
+                return;
+            }
+
+            if (selectedCriteria.equals("Quản lý") && keyword.matches("\\d+")) {
+                Notifications.getInstance().show(Notifications.Type.INFO, "Tên vật tư không thể là số!");
+                return;
+            }
+
+            if ((selectedCriteria.equals("Mã Chức vụ") || selectedCriteria.equals("Mã loại vật tư")) && !keyword.matches("\\w+")) {
+                Notifications.getInstance().show(Notifications.Type.INFO, "Mã không hợp lệ!");
+                return;
+            }
+
+            DefaultTableModel model = (DefaultTableModel) tbl_QuyenHan.getModel();
+            TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>(model);
+            tbl_QuyenHan.setRowSorter(sorter);
+
+            sorter.setRowFilter(RowFilter.regexFilter("(?i)" + Pattern.quote(keyword), columnIndex));
+        });
+    }
+    
+    
+        public void searchFilter() {
+        String keyword = txt_timKiem.getText().trim().toLowerCase();
+        DefaultTableModel model = (DefaultTableModel) tbl_QuyenHan.getModel();
+        TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>(model);
+        tbl_QuyenHan.setRowSorter(sorter);
+
+        sorter.setRowFilter(new RowFilter<DefaultTableModel, Integer>() {
+            @Override
+            public boolean include(RowFilter.Entry<? extends DefaultTableModel, ? extends Integer> entry) {
+                for (int i = 0; i < 3; i++) { // Cột 0: Mã vật tư, 1: Tên, 2: Mã loại
+                    String value = entry.getStringValue(i).toLowerCase();
+                    if (value.contains(keyword)) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+        });
+    }
+        
+        
+        
+        
+        
     @SuppressWarnings("unchecked")
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
@@ -301,25 +410,15 @@ public class QuyenHan_Form extends TabbedForm {
     }// </editor-fold>//GEN-END:initComponents
 
     private void tbl_QuyenHanMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_tbl_QuyenHanMouseClicked
-        int selectedRow = tbl_QuyenHan.getSelectedRow(); // Lấy dòng đang chọn
-
-        if (selectedRow != -1) { // Kiểm tra có dòng được chọn không
-            String maCV = tbl_QuyenHan.getValueAt(selectedRow, 0).toString();
-            String quanLy = tbl_QuyenHan.getValueAt(selectedRow, 1).toString();
-            String Xem = tbl_QuyenHan.getValueAt(selectedRow, 2).toString();
-            String Xuatexcel = tbl_QuyenHan.getValueAt(selectedRow, 3).toString();
-            String Them = tbl_QuyenHan.getValueAt(selectedRow, 4).toString();
-            String Xoa = tbl_QuyenHan.getValueAt(selectedRow, 5).toString();
-            String Sua = tbl_QuyenHan.getValueAt(selectedRow, 6).toString();
-
-            // Lưu vào biến toàn cục để truyền vào JDialo
-            selectedmaCV = maCV;
-            selectedquanLy = quanLy;
-            selectedXem = Xem;
-            selectedXuatexcel = Xuatexcel;
-            selectedthem = Them;
-            selectedxoa = Xoa;
-            selectedsua = Sua;
+        int selectedRow = tbl_QuyenHan.getSelectedRow();
+        if (selectedRow != -1) {
+            selectedMaCV = tbl_QuyenHan.getValueAt(selectedRow, 0) != null ? tbl_QuyenHan.getValueAt(selectedRow, 0).toString() : "";
+            selectedQuanLy = tbl_QuyenHan.getValueAt(selectedRow, 1) != null ? tbl_QuyenHan.getValueAt(selectedRow, 1).toString() : "";
+            selectedXem = parseTableValue(tbl_QuyenHan.getValueAt(selectedRow, 2));
+            selectedXuatExcel = parseTableValue(tbl_QuyenHan.getValueAt(selectedRow, 3));
+            selectedThem = parseTableValue(tbl_QuyenHan.getValueAt(selectedRow, 4));
+            selectedXoa = parseTableValue(tbl_QuyenHan.getValueAt(selectedRow, 5));
+            selectedSua = parseTableValue(tbl_QuyenHan.getValueAt(selectedRow, 6));
         }
     }//GEN-LAST:event_tbl_QuyenHanMouseClicked
 
@@ -328,14 +427,9 @@ public class QuyenHan_Form extends TabbedForm {
     }//GEN-LAST:event_btn_SuaActionPerformed
 
     private void btn_ThemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btn_ThemActionPerformed
-        ChucVu_Form cv = new ChucVu_Form();
-        
-        Set<String> dsMaLoaiCV = cv.getDanhSachMaChucvu();
-
-        // Tạo dialog và truyền dữ liệu
+        Set<String> dsMaLoaiCV = cvDAO.getDanhSachMaChucVu();
         Dialog_QuyenHan dialog = new Dialog_QuyenHan(null, true, this, dsMaLoaiCV);
         dialog.setMaLoaiData(dsMaLoaiCV);
-        dialog.setData(selectedmaCV, selectedquanLy, WIDTH, FRAMEBITS, WIDTH, ERROR, WIDTH);
         dialog.setVisible(true);
     }//GEN-LAST:event_btn_ThemActionPerformed
 

@@ -1,4 +1,3 @@
-
 package form;
 
 import com.formdev.flatlaf.FlatLaf;
@@ -8,7 +7,12 @@ import dao.VatTuDAO;
 import entity.model_VatTu;
 import java.awt.Color;
 import java.awt.Font;
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Set;
 import javax.swing.BorderFactory;
@@ -29,6 +33,7 @@ public class DiaLog_VatTu extends javax.swing.JDialog {
     private VatTuDAO vtdao = new VatTuDAO();
     private List<model_VatTu> list_VatTu = new ArrayList<model_VatTu>();
     private VatTu_Form pnVatTuRef;
+    private static final String LOG_FILE = "vattu_log.txt";
 
     /**
      * Creates new form DaiLog_VatTu
@@ -96,52 +101,76 @@ public class DiaLog_VatTu extends javax.swing.JDialog {
     public void addVatTu() {
         boolean isValid = true;
 
-        // Reset viền trước khi kiểm tra
         resetBorder(txt_tenvatTu);
 
-        // Kiểm tra từng field
         String tenVatTu = txt_tenvatTu.getText().trim();
         if (tenVatTu.isEmpty()) {
             setErrorBorder(txt_tenvatTu);
             isValid = false;
         }
 
-        // Nếu có lỗi nhập liệu, hiển thị thông báo và dừng lại
         if (!isValid) {
             Notifications.getInstance().show(Notifications.Type.INFO, "Vui lòng nhập đủ thông tin!");
             return;
         }
 
-        // 🔎 Kiểm tra tên đã tồn tại chưa
         if (vtdao.isTenVatTuExist(tenVatTu)) {
-            Notifications.getInstance().show(Notifications.Type.INFO, "Tên loại vật tư đã tồn tại!");
+            Notifications.getInstance().show(Notifications.Type.INFO, "Tên vật tư đã tồn tại!");
             setErrorBorder(txt_tenvatTu);
             return;
         }
 
-        // Nếu hợp lệ, tiếp tục thêm vật tư
         model_VatTu vt = new model_VatTu();
-        vt.setTenVatTu(txt_tenvatTu.getText().trim());
+        vt.setTenVatTu(tenVatTu);
         vt.setMaloaivatTu((String) cbo_maloaivatTu.getSelectedItem());
 
         try {
-            vtdao.insert(vt);
-            Notifications.getInstance().show(Notifications.Type.SUCCESS, "Thêm loại vật tư thành công!");
+            // Sinh mã vật tư trước khi insert
+            String maVT = vtdao.selectMaxId();
+            vt.setMavatTu(maVT); // Gán mã vào vt
+            vtdao.insert(vt); // Thêm vào CSDL
 
-            // 🔔 Cập nhật bảng trong pnVatTu
+            Notifications.getInstance().show(Notifications.Type.SUCCESS, "Thêm vật tư thành công!");
+
+            // Ghi log
+            String log = String.format("Thêm|%s|%s|%s|%s",
+                    maVT,
+                    tenVatTu,
+                    vt.getMaloaivatTu(),
+                    new SimpleDateFormat("HH:mm:ss dd/MM/yyyy").format(new Date()));
+            writeLogToFile(log);
+
             if (pnVatTuRef != null) {
                 pnVatTuRef.fillToTableVatTu();
-                //pnLVTRef.themThongBao("Thêm", lvt.getTenLoaiVatTu()); // Cập nhật thông báo
+               
             }
 
-            // Đợi thông báo hiển thị xong rồi mới đóng form
             new Timer(700, e -> dispose()).start();
 
         } catch (Exception e) {
-            Notifications.getInstance().show(Notifications.Type.INFO, "Lỗi: " + e.getMessage());
-            Notifications.getInstance().show(Notifications.Type.INFO, "Thêm loại vật tư thất bại!");
+            Notifications.getInstance().show(Notifications.Type.INFO, "Thêm vật tư thất bại!");
+            String log = String.format("Thêm thất bại|%s|%s|%s|%s",
+                    vt.getMavatTu() != null ? vt.getMavatTu() : "N/A",
+                    tenVatTu,
+                    vt.getMaloaivatTu(),
+                    new SimpleDateFormat("HH:mm:ss dd/MM/yyyy").format(new Date()));
+            writeLogToFile(log);
+            if (pnVatTuRef != null) {
+               
+            }
         }
     }
+    
+    //Ghi vào file
+    private void writeLogToFile(String log) {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(LOG_FILE, true))) {
+            writer.write(log);
+            writer.newLine();
+        } catch (IOException e) {
+            Notifications.getInstance().show(Notifications.Type.ERROR, "Lỗi khi ghi log: " + e.getMessage());
+        }
+    }
+
 
     // Đặt viền đỏ cho JTextField khi có lỗi
     private void setErrorBorder(JTextField field) {
@@ -152,7 +181,6 @@ public class DiaLog_VatTu extends javax.swing.JDialog {
     private void resetBorder(JTextField field) {
         field.setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, new Color(200, 200, 200))); // Viền xám nhạt
     }
-
 
     @SuppressWarnings("unchecked")
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents

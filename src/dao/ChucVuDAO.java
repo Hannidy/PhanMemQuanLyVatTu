@@ -1,19 +1,23 @@
 package dao;
 
 import entity.model_ChucVu;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import util.JDBCHelper;
 
 public class ChucVuDAO {
 
     public void insert(model_ChucVu cv) {
+        // Đảm bảo mã đã được gán trước khi insert
+        if (cv.getMaChucVu()== null) {
+            throw new IllegalStateException("Mã chức vụ chưa được sinh!");
+        }
         String sql = "INSERT INTO CHUCVU (MaChucVu, TenChucVu) VALUES (?, ?)";
-        String newMaChucVu = this.selectMaxId(); // Lấy mã vật tư mới
-        JDBCHelper.update(sql,
-                newMaChucVu,
-                cv.getTenChucVu()); // Sửa dấu chấm phẩy thành dấu đóng ngoặc
+        JDBCHelper.update(sql, cv.getMaChucVu(), cv.getTenChucVu());
     }
 
     public void update(model_ChucVu cv) {
@@ -28,19 +32,24 @@ public class ChucVuDAO {
         JDBCHelper.update(sql, maChucVu);
     }
 
-    public String selectMaxId() {
-        String sql = "SELECT MAX(CAST(SUBSTRING(MaChucVu, 3, LEN(MaChucVu)-2) AS INT)) FROM ChucVu";
-        String newMaChucVu = "CV01"; // Mặc định nếu bảng rỗng.
-
-        try (java.sql.ResultSet rs = JDBCHelper.query(sql)) {
-            if (rs != null && rs.next() && rs.getObject(1) != null) {
-                int maxMaChucVu = rs.getInt(1);
-                newMaChucVu = "CV" + (maxMaChucVu + 1); // Tạo mã chức vụ tiếp theo
+     public String selectMaxId() {
+        String sql = "SELECT MAX(CAST(SUBSTRING(MaChucVu, 3, LEN(MaChucVu)-2) AS INT)) FROM CHUCVU WHERE MaChucVu LIKE 'CV[0-9]%'";
+        String newMaChucVu = "CV01";
+        try {
+            ResultSet rs = JDBCHelper.query(sql);
+            if (rs == null) {
+                System.out.println("⚠ Không thể lấy dữ liệu: ResultSet trả về null.");
+                return newMaChucVu;
+            }
+            if (rs.next()) {
+                int maxMaCV = rs.getInt(1);
+                if (maxMaCV > 0) {
+                    newMaChucVu = "CV" + (maxMaCV + 1);
+                }
             }
         } catch (SQLException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("Lỗi khi lấy mã chuwsc vuj mới nhất: " + e.getMessage());
         }
-
         return newMaChucVu;
     }
 
@@ -111,4 +120,17 @@ public class ChucVuDAO {
         }
         return false;
     }
+    
+    public Set<String> getDanhSachMaChucVu() {
+    Set<String> dsMaChucVu = new HashSet<>();
+    String sql = "SELECT MaChucVu FROM CHUCVU";
+    try (java.sql.ResultSet rs = JDBCHelper.query(sql)) {
+        while (rs.next()) {
+            dsMaChucVu.add(rs.getString("MaChucVu"));
+        }
+    } catch (SQLException e) {
+        throw new RuntimeException(e);
+    }
+    return dsMaChucVu;
+} 
 }

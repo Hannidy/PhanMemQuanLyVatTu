@@ -11,7 +11,12 @@ import dao.NhaCungCapDAO;
 import entity.model_NhaCungCap;
 import java.awt.Color;
 import java.awt.Font;
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import javax.swing.BorderFactory;
 import javax.swing.JTextField;
@@ -30,6 +35,15 @@ public class DiaLog_NhaCungCap extends javax.swing.JDialog {
     private NhaCungCapDAO nccdao = new NhaCungCapDAO();
     private List<model_NhaCungCap> list_NhaCungCap = new ArrayList<model_NhaCungCap>();
     private NhaCungCap_Form pnNCCRef;
+
+    private String emailRegex = "^[a-zA-Z0-9_+&*-]+(?:\\.[a-zA-Z0-9_+&*-]+)*@(?:[a-zA-Z0-9-]+\\.)+[a-zA-Z]{2,7}$";
+
+    private static final String LOG_FILE = "nhacungcap_log.txt";
+    // Danh sách lưu trữ thông báo
+    private List<String> actionLogs = new ArrayList<>();
+    // Biến đếm số lượng thông báo
+    private int notificationCount = 0;
+    private static final long TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000; // 24 tiếng tính bằng milliseconds
 
     /**
      * Creates new form DiaLog_NhaCungCap
@@ -83,6 +97,8 @@ public class DiaLog_NhaCungCap extends javax.swing.JDialog {
 
     private void addNhaCungCap() {
         boolean isValid = true;
+        boolean hasError = false;
+        boolean hasSpecificError = false; // Biến để theo dõi lỗi cụ thể
 
         // Reset viền trước khi kiểm tra
         resetBorder(txt_tennhacungCap);
@@ -96,55 +112,125 @@ public class DiaLog_NhaCungCap extends javax.swing.JDialog {
             setErrorBorder(txt_tennhacungCap);
             isValid = false;
         }
-        if (txt_sodienThoai.getText().trim().isEmpty()) {
+
+        String SDT = txt_sodienThoai.getText().trim();
+        if (SDT.isEmpty()) {
             setErrorBorder(txt_sodienThoai);
             isValid = false;
+        } else if (!SDT.matches("0\\d{9}")) { // Kiểm tra số điện thoại bắt đầu bằng 0 và có 10 chữ số
+            setErrorBorder(txt_sodienThoai);
+            Notifications.getInstance().show(Notifications.Type.INFO, "Số điện thoại phải bắt đầu bằng 0 và có đúng 10 chữ số!");
+            isValid = false;
+            hasSpecificError = true;
         }
-        if (txt_email.getText().trim().isEmpty()) {
+
+        String email = txt_email.getText().trim();
+        if (email.isEmpty()) {
             setErrorBorder(txt_email);
             isValid = false;
+        } else if (!email.matches(emailRegex)) {
+            setErrorBorder(txt_email);
+            Notifications.getInstance().show(Notifications.Type.INFO, "Email không đúng định dạng!");
+            isValid = false;
+            hasSpecificError = true;
         }
-        if (txt_diaChi.getText().trim().isEmpty()) {
+
+        String diachi = txt_diaChi.getText().trim();
+        if (diachi.isEmpty()) {
             setErrorBorder(txt_diaChi);
             isValid = false;
         }
 
-        // Nếu có lỗi, hiển thị thông báo và dừng lại
-        if (!isValid) {
+        // Nếu có lỗi và không có lỗi cụ thể, hiển thị thông báo tổng quát
+        if (!isValid && !hasSpecificError) {
             Notifications.getInstance().show(Notifications.Type.INFO, "Vui lòng nhập đầy đủ thông tin!");
             return;
+        } else if (!isValid) {
+            return; // Có lỗi cụ thể, không hiển thị thêm thông báo
         }
-        
-        // 🔎 Kiểm tra tên đã tồn tại chưa
-        if (nccdao.isTenNhaCungCapExist(tenNCC)) {
-            Notifications.getInstance().show(Notifications.Type.INFO, "Tên loại vật tư đã tồn tại!");
+
+        // 🔎 Kiểm tra tên nhà cung cấp
+        if (nccdao.isEmailNhaCungCapExist(tenNCC)) {
+            Notifications.getInstance().show(Notifications.Type.INFO, "Tên nhà cung cấp đã tồn tại!");
             setErrorBorder(txt_tennhacungCap);
+            hasError = true;
+        }
+
+        // 🔎 Kiểm tra email
+        if (nccdao.isEmailNhaCungCapExist(email)) {
+            Notifications.getInstance().show(Notifications.Type.INFO, "Email đã tồn tại!");
+            setErrorBorder(txt_email);
+            hasError = true;
+        }
+
+        // 🔎 Kiểm tra SDT
+        if (nccdao.isSDTNhaCungCapExist(SDT)) {
+            Notifications.getInstance().show(Notifications.Type.INFO, "Số điện thoại đã tồn tại!");
+            setErrorBorder(txt_sodienThoai);
+            hasError = true;
+        }
+
+        // Nếu có bất kỳ lỗi nào thì dừng lại
+        if (hasError) {
             return;
         }
-
         // Nếu hợp lệ, tiếp tục thêm nhà cung cấp
         model_NhaCungCap ncc = new model_NhaCungCap();
-        ncc.setTennhacungCap(txt_tennhacungCap.getText().trim());
-        ncc.setSodienThoai(txt_sodienThoai.getText().trim());
-        ncc.setEmail(txt_email.getText().trim());
-        ncc.setDiaChi(txt_diaChi.getText().trim());
+        ncc.setTennhacungCap(tenNCC);
+        ncc.setSodienThoai(SDT);
+        ncc.setEmail(email);
+        ncc.setDiaChi(diachi);
 
         try {
-            nccdao.insert(ncc);
+            // Sinh mã nhà cung cấp trước khi insert (nếu cần)
+            String maNCC = nccdao.selectMaxId(); // Giả định nccdao có hàm selectMaxId() tương tự
+            ncc.setManhacungCap(maNCC); // Gán mã vào ncc
+            nccdao.insert(ncc); // Thêm vào CSDL
+
             Notifications.getInstance().show(Notifications.Type.SUCCESS, "Thêm nhà cung cấp thành công!");
 
-            // 🔔 Cập nhật bảng trong pnNhaCungCap
+            // Ghi log (đồng bộ với addVatTu)
+            String log = String.format("Thêm|%s|%s|%s|%s|%s|%s",
+                    maNCC,
+                    tenNCC,
+                    SDT,
+                    email,
+                    diachi, // Thay cho maLoaiVatTu, vì không có trường tương ứng
+                    new SimpleDateFormat("HH:mm:ss dd/MM/yyyy").format(new Date()));
+            writeLogToFile(log);
+
+            // Cập nhật bảng
             if (pnNCCRef != null) {
                 pnNCCRef.fillToTableNhaCungCap();
-               // pnNCCRef.themThongBao("Thêm", ncc.getTennhacungCap()); // Cập nhật thông báo
+
             }
 
-            // Đợi thông báo hiển thị xong rồi mới đóng form
-            new Timer(1000, e -> dispose()).start();
+            // Đợi thông báo hiển thị xong rồi đóng form (đồng bộ thời gian với addVatTu)
+            new Timer(700, e -> dispose()).start();
 
         } catch (Exception e) {
-            //Notifications.getInstance().show(Notifications.Type.INFO, "Lỗi: " + e.getMessage());
             Notifications.getInstance().show(Notifications.Type.INFO, "Thêm nhà cung cấp thất bại!");
+            String log = String.format("Thêm thất bại|%s|%s|%s|%s|%s|%s",
+                    ncc.getManhacungCap() != null ? ncc.getManhacungCap() : "N/A",
+                    tenNCC,
+                    SDT,
+                    email,
+                    diachi,
+                    new SimpleDateFormat("HH:mm:ss dd/MM/yyyy").format(new Date()));
+            writeLogToFile(log);
+            if (pnNCCRef != null) {
+                pnNCCRef.fillToTableNhaCungCap();
+
+            }
+        }
+    }
+
+    private void writeLogToFile(String log) {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(LOG_FILE, true))) {
+            writer.write(log);
+            writer.newLine();
+        } catch (IOException e) {
+            Notifications.getInstance().show(Notifications.Type.ERROR, "Lỗi khi ghi log: " + e.getMessage());
         }
     }
 
@@ -156,6 +242,7 @@ public class DiaLog_NhaCungCap extends javax.swing.JDialog {
     private void resetBorder(JTextField field) {
         field.setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, new Color(200, 200, 200))); // Viền xám nhạt
     }
+
     /**
      * This method is called from within the constructor to initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is always

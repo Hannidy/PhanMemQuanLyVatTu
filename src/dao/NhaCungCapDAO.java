@@ -1,4 +1,3 @@
-
 package dao;
 
 import entity.model_NhaCungCap;
@@ -9,16 +8,14 @@ import java.util.List;
 import util.JDBCHelper;
 
 public class NhaCungCapDAO {
-     public void insert(model_NhaCungCap ncc) {
-        String sql = "INSERT INTO NHACUNGCAP (MaNhaCungCap, TenNhaCungCap, SoDienThoai, Email, DiaChi) VALUES (?, ?, ?, ?, ?)";
-        String newmaNCC = this.selectMaxId();
 
-        JDBCHelper.update(sql,
-                newmaNCC,
-                ncc.getTennhacungCap(),
-                ncc.getSodienThoai(),
-                ncc.getEmail(),
-                ncc.getDiaChi());
+    public void insert(model_NhaCungCap ncc) {
+        // Đảm bảo mã đã được gán trước khi insert
+        if (ncc.getManhacungCap() == null) {
+            throw new IllegalStateException("Mã nhà cung cấp chưa được sinh!");
+        }
+        String sql = "INSERT INTO NHACUNGCAP (MaNhaCungCap, TenNhaCungCap, SoDienThoai, Email, DiaChi) VALUES (?, ?, ?, ?, ?)";
+        JDBCHelper.update(sql, ncc.getManhacungCap(), ncc.getTennhacungCap(), ncc.getSodienThoai(), ncc.getEmail(), ncc.getDiaChi());
     }
 
     public void update(model_NhaCungCap ncc) {
@@ -38,25 +35,24 @@ public class NhaCungCapDAO {
     }
 
     public String selectMaxId() {
-        String sql = "SELECT MAX(CAST(SUBSTRING(MaNhaCungCap, 4, LEN(MaNhaCungCap)-3) AS INT)) FROM NHACUNGCAP";
-        String newMaNhaCungCap = "NCC01";// Mặc định nếu bảng rỗng.
+        String sql = "SELECT MAX(CAST(SUBSTRING(MaNhaCungCap, 4, LEN(MaNhaCungCap)-3) AS INT)) FROM NHACUNGCAP WHERE MaNhaCungCap LIKE 'NCC[0-9]%'";
+        String newMaNCC = "NCC01";
         try {
-            ResultSet rs = JDBCHelper.query(sql);;
+            ResultSet rs = JDBCHelper.query(sql);
             if (rs == null) {
                 System.out.println("⚠ Không thể lấy dữ liệu: ResultSet trả về null.");
-                return newMaNhaCungCap;
+                return newMaNCC;
             }
-            if (rs.next() && rs.getObject(1) != null) {
-                int maxMaNhaCungCap = rs.getInt(1);
-                newMaNhaCungCap = "NCC" + (maxMaNhaCungCap + 1); // Tạo NCC tiếp theo
-            }
-            if (rs != null && rs.getObject(1) != null) {
-                rs.getStatement().getConnection().close();
+            if (rs.next()) {
+                int maxMaNCC = rs.getInt(1);
+                if (maxMaNCC > 0) {
+                    newMaNCC = "NCC" + (maxMaNCC + 1);
+                }
             }
         } catch (SQLException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("Lỗi khi lấy mã nhà cung cấp mới nhất: " + e.getMessage());
         }
-        return newMaNhaCungCap;
+        return newMaNCC;
     }
 
     public List<model_NhaCungCap> selectById(String keyWord) {
@@ -107,11 +103,32 @@ public class NhaCungCapDAO {
         }
         return list_NhaCungCap;
     }
-    
-    
+
     public boolean isTenNhaCungCapExist(String ten) {  // Hàm kiểm tra tên loai vat tu có tồn tại hay chưa
         String sql = "SELECT COUNT(*) FROM NhaCungCap WHERE TenNhaCungCap = ?";
         try (ResultSet rs = JDBCHelper.query(sql, ten)) {
+            if (rs.next()) {
+                return rs.getInt(1) > 0;
+            }
+        } catch (SQLException e) {
+        }
+        return false;
+    }
+
+    public boolean isEmailNhaCungCapExist(String email) {  // Hàm kiểm tra tên loai vat tu có tồn tại hay chưa
+        String sql = "SELECT COUNT(*) FROM NhaCungCap WHERE Email = ?";
+        try (ResultSet rs = JDBCHelper.query(sql, email)) {
+            if (rs.next()) {
+                return rs.getInt(1) > 0;
+            }
+        } catch (SQLException e) {
+        }
+        return false;
+    }
+
+    public boolean isSDTNhaCungCapExist(String SDT) {  // Hàm kiểm tra tên loai vat tu có tồn tại hay chưa
+        String sql = "SELECT COUNT(*) FROM NhaCungCap WHERE SoDienThoai = ?";
+        try (ResultSet rs = JDBCHelper.query(sql, SDT)) {
             if (rs.next()) {
                 return rs.getInt(1) > 0;
             }

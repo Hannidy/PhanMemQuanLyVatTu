@@ -4,12 +4,25 @@ import com.formdev.flatlaf.FlatClientProperties;
 import dao.VatTuDAO;
 import entity.model_VatTu;
 import java.awt.Color;
+import java.awt.event.ActionListener;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
+import javax.swing.JDialog;
 import javax.swing.JOptionPane;
+import javax.swing.JScrollPane;
+import javax.swing.JTable;
 import javax.swing.RowFilter;
+import javax.swing.SwingUtilities;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.table.DefaultTableModel;
@@ -27,6 +40,13 @@ public class VatTu_Form extends TabbedForm {
     private String selectedTenVT = "";  // Biến để lấy dữ liệu dòng
     private String selectedmaLoaiVatTu = "";  // Biến để lấy dữ liệu dòng
 
+    private static final String LOG_FILE = "vattu_log.txt";
+    // Danh sách lưu trữ thông báo
+    private List<String> actionLogs = new ArrayList<>();
+    // Biến đếm số lượng thông báo
+    private int notificationCount = 0;
+    private static final long TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000; // 24 tiếng tính bằng milliseconds
+
     public VatTu_Form() {
         initComponents();
         initSearchComboBox();
@@ -34,7 +54,9 @@ public class VatTu_Form extends TabbedForm {
         addSearchButtonAction();
         tbl_ModelVatTu = (DefaultTableModel) tbl_vatTu.getModel();
         fillToTableVatTu();
-        styleUI();
+        addBellButtonAction();
+        notificationCount = readLogsFromFile().size();
+        updateBellIcon();
     }
 
     private void initSearchComboBox() {
@@ -44,14 +66,6 @@ public class VatTu_Form extends TabbedForm {
         cbo_timKiem.addItem("Mã loại vật tư");
     }
 
-    public void styleUI() {
-        txt_timKiem.putClientProperty(FlatClientProperties.STYLE, ""
-                + "arc:999;"
-                + "borderWidth:1;"
-                + "focusWidth:1;"
-                + "innerFocusWidth:0;");
-
-    }
     // Hiển thị danh sách vật tư lên bảng
     public void fillToTableVatTu() {
         try {
@@ -77,12 +91,17 @@ public class VatTu_Form extends TabbedForm {
     }
 
     public void deleteVatTu() {
+        int rows = tbl_vatTu.getSelectedRow();
         int[] selectedRows = tbl_vatTu.getSelectedRows(); // Lấy tất cả các dòng được chọn
 
         if (selectedRows.length == 0) {
             Notifications.getInstance().show(Notifications.Type.INFO, "Chọn ít nhất một dòng để xóa!");
             return;
         }
+
+        String maVT = tbl_vatTu.getValueAt(rows, 0).toString();
+        String tenVT = tbl_vatTu.getValueAt(rows, 1).toString().trim();
+        String maLoaiVT = tbl_vatTu.getValueAt(rows, 2).toString().trim();
 
         boolean confirm = Message.confirm("Bạn có chắc chắn muốn xóa " + selectedRows.length + " vật tư?");
         if (!confirm) {
@@ -102,10 +121,12 @@ public class VatTu_Form extends TabbedForm {
             fillToTableVatTu(); // Cập nhật lại bảng sau khi xóa
             Notifications.getInstance().show(Notifications.Type.SUCCESS, "Đã xóa " + selectedRows.length + " vật tư!");
 
-            // 🔔 Cập nhật thông báo chuông sau khi hoàn tất tất cả các xóa
-            for (String maVatTu : danhSachXoa) {
-                //themThongBao("Xóa", maVatTu);
-            }
+            String log = String.format("Xóa|%s|%s|%s|%s",
+                    maVT, tenVT, maLoaiVT,
+                    new SimpleDateFormat("HH:mm:ss dd/MM/yyyy").format(new Date()));
+            writeLogToFile(log);
+            notificationCount++; // Tăng số thông báo
+            updateBellIcon(); // Cập nhật giao diện chuông
 
         } catch (Exception e) {
             Notifications.getInstance().show(Notifications.Type.INFO, "Không thể xóa vật tư!");
@@ -135,7 +156,7 @@ public class VatTu_Form extends TabbedForm {
         model_VatTu vt = new model_VatTu();
         vt.setMavatTu(maVT);
         vt.setTenVatTu(tenVT);
-        vt.setMaloaivatTu(maLoaiVT); // Chỉ lấy MaLoaiVatTu thay vì các trường khác
+        vt.setMaloaivatTu(maLoaiVT);
 
         // Xác nhận cập nhật
         boolean confirm = Message.confirm("Bạn có chắc chắn muốn cập nhật vật tư có mã '" + maVT + "'?");
@@ -145,12 +166,135 @@ public class VatTu_Form extends TabbedForm {
                 fillToTableVatTu(); // Cập nhật lại bảng để hiển thị dữ liệu mới
                 Notifications.getInstance().show(Notifications.Type.SUCCESS, "Cập nhật vật tư thành công!");
 
-                // 🔔 Ghi nhận thông báo vào hệ thống chuông
-                //themThongBao("Cập nhật", tenVT);
+                // 🔔 Ghi log vào file
+                String log = String.format("Cập nhật|%s|%s|%s|%s",
+                        maVT, tenVT, maLoaiVT,
+                        new SimpleDateFormat("HH:mm:ss dd/MM/yyyy").format(new Date()));
+                writeLogToFile(log);
+                notificationCount++; // Tăng số thông báo
+                updateBellIcon(); // Cập nhật giao diện chuông
+
             } catch (Exception e) {
                 Message.error("Lỗi: " + e.getMessage());
                 Notifications.getInstance().show(Notifications.Type.INFO, "Cập nhật vật tư thất bại!");
             }
+        }
+    }
+
+    private void addBellButtonAction() {
+        for (ActionListener al : btn_bell.getActionListeners()) {
+            btn_bell.removeActionListener(al);
+        }
+
+        btn_bell.addActionListener(e -> {
+            JDialog dialog = new JDialog(SwingUtilities.getWindowAncestor(btn_bell), "Lịch sử hành động");
+            dialog.setSize(600, 400);
+            dialog.setLocationRelativeTo(null);
+            dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+
+            String[] columns = {"Hành động", "Mã vật tư", "Tên vật tư", "Mã loại vật tư", "Thời gian"};
+            DefaultTableModel model = new DefaultTableModel(columns, 0);
+            JTable logTable = new JTable(model);
+            JScrollPane scrollPane = new JScrollPane(logTable);
+            dialog.add(scrollPane);
+
+            List<String> logs = readLogsFromFile(); // Đọc và tự động xóa log cũ
+            if (logs.isEmpty()) {
+                Notifications.getInstance().show(Notifications.Type.INFO, "Chưa có hành động nào!");
+                dialog.dispose();
+                return;
+            }
+
+            for (String log : logs) {
+                String[] parts = log.split("\\|");
+                if (parts.length == 5) {
+                    model.addRow(new Object[]{
+                        parts[0], parts[1], parts[2], parts[3], parts[4]
+                    });
+                }
+            }
+
+            // Cập nhật notificationCount dựa trên số dòng log còn lại
+            notificationCount = logs.size();
+            updateBellIcon();
+
+            dialog.setVisible(true);
+        });
+    }
+
+    private List<String> readLogsFromFile() {
+        List<String> logs = new ArrayList<>();
+        List<String> logsToKeep = new ArrayList<>();
+        SimpleDateFormat dateFormat = new SimpleDateFormat("HH:mm:ss dd/MM/yyyy");
+        Date currentTime = new Date();
+
+        // Đọc file log
+        try (BufferedReader reader = new BufferedReader(new FileReader(LOG_FILE))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if (!line.trim().isEmpty()) {
+                    logs.add(line);
+                }
+            }
+        } catch (FileNotFoundException e) {
+            // File chưa tồn tại
+        } catch (IOException e) {
+            Notifications.getInstance().show(Notifications.Type.ERROR, "Lỗi khi đọc log: " + e.getMessage());
+        }
+
+        // Lọc các log cũ hơn 24 tiếng
+        for (String log : logs) {
+            String[] parts = log.split("\\|");
+            if (parts.length == 5) {
+                try {
+                    Date logTime = dateFormat.parse(parts[4]); // Parse thời gian từ log
+                    long timeDiff = currentTime.getTime() - logTime.getTime();
+                    if (timeDiff <= TWENTY_FOUR_HOURS) {
+                        logsToKeep.add(log); // Giữ lại log nếu chưa quá 24 tiếng
+                    }
+                } catch (Exception e) {
+                    // Nếu parse thời gian lỗi, bỏ qua dòng này
+                    System.err.println("Lỗi parse thời gian log: " + log);
+                }
+            }
+        }
+
+        // Ghi lại file log với các dòng còn lại
+        if (logs.size() != logsToKeep.size()) { // Chỉ ghi nếu có dòng bị xóa
+            writeLogsToFile(logsToKeep);
+        }
+
+        return logsToKeep;
+    }
+
+    private void writeLogsToFile(List<String> logs) {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(LOG_FILE))) {
+            for (String log : logs) {
+                writer.write(log);
+                writer.newLine();
+            }
+        } catch (IOException e) {
+            Notifications.getInstance().show(Notifications.Type.ERROR, "Lỗi khi ghi log: " + e.getMessage());
+        }
+    }
+
+    private void writeLogToFile(String log) {
+        // Ghi log mới và kiểm tra xóa log cũ
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(LOG_FILE, true))) {
+            writer.write(log);
+            writer.newLine();
+        } catch (IOException e) {
+            Notifications.getInstance().show(Notifications.Type.ERROR, "Lỗi khi ghi log: " + e.getMessage());
+        }
+        // Sau khi ghi log mới, kiểm tra và xóa log cũ
+        readLogsFromFile();
+    }
+
+    private void updateBellIcon() {
+        if (notificationCount > 0) {
+            btn_bell.setToolTipText("Có " + notificationCount + " hành động");
+        } else {
+            btn_bell.setToolTipText("Không có hành động nào");
         }
     }
 
@@ -189,12 +333,6 @@ public class VatTu_Form extends TabbedForm {
                     TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>((DefaultTableModel) tbl_vatTu.getModel());
                     tbl_vatTu.setRowSorter(sorter);
                     sorter.setRowFilter(null);
-                    return;
-                }
-
-                // ⚠️ Chỉ kiểm tra nếu đang tìm theo TÊN mà lại nhập toàn số (hiếm gặp)
-                if (selectedCriteria.equals("Tên vật tư") && keyword.matches("\\d+")) {
-                    Notifications.getInstance().show(Notifications.Type.INFO, "Tên vật tư không thể là số!");
                     return;
                 }
 
@@ -252,16 +390,6 @@ public class VatTu_Form extends TabbedForm {
 
             if (columnIndex == -1) {
                 Notifications.getInstance().show(Notifications.Type.INFO, "Tiêu chí tìm kiếm không hợp lệ!");
-                return;
-            }
-
-            if (selectedCriteria.equals("Tên vật tư") && keyword.matches("\\d+")) {
-                Notifications.getInstance().show(Notifications.Type.INFO, "Tên vật tư không thể là số!");
-                return;
-            }
-
-            if ((selectedCriteria.equals("Mã vật tư") || selectedCriteria.equals("Mã loại vật tư")) && !keyword.matches("\\w+")) {
-                Notifications.getInstance().show(Notifications.Type.INFO, "Mã không hợp lệ!");
                 return;
             }
 
@@ -353,6 +481,11 @@ public class VatTu_Form extends TabbedForm {
         });
 
         btn_bell.setIcon(new javax.swing.ImageIcon(getClass().getResource("/drawer/image/icon.png"))); // NOI18N
+        btn_bell.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btn_bellActionPerformed(evt);
+            }
+        });
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
         this.setLayout(layout);
@@ -365,7 +498,7 @@ public class VatTu_Form extends TabbedForm {
                     .addGroup(layout.createSequentialGroup()
                         .addComponent(jLabel1)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                        .addComponent(btn_bell, javax.swing.GroupLayout.PREFERRED_SIZE, 49, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addComponent(btn_bell))
                     .addGroup(layout.createSequentialGroup()
                         .addComponent(btn_timKiem)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
@@ -443,6 +576,10 @@ public class VatTu_Form extends TabbedForm {
         }
     }//GEN-LAST:event_tbl_vatTuMouseClicked
 
+    private void btn_bellActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btn_bellActionPerformed
+
+    }//GEN-LAST:event_btn_bellActionPerformed
+
     @Override
     public boolean formClose() {
         return true;
@@ -456,7 +593,7 @@ public class VatTu_Form extends TabbedForm {
 
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JButton btn_bell;
+    public javax.swing.JButton btn_bell;
     private javax.swing.JButton btn_sua;
     private javax.swing.JButton btn_them;
     private javax.swing.JButton btn_timKiem;

@@ -9,9 +9,15 @@ import com.formdev.flatlaf.fonts.roboto.FlatRobotoFont;
 import com.formdev.flatlaf.themes.FlatMacDarkLaf;
 import dao.ChucVuDAO;
 import entity.model_ChucVu;
+import entity.model_VatTu;
 import java.awt.Color;
 import java.awt.Font;
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import javax.swing.BorderFactory;
 import javax.swing.JOptionPane;
@@ -31,6 +37,13 @@ public class DiaLog_ChucVu extends javax.swing.JDialog {
     private ChucVuDAO cvdao = new ChucVuDAO();
     private List<model_ChucVu> list_chucVu = new ArrayList<model_ChucVu>();
     private ChucVu_Form pnChucVuRef;
+
+    private static final String LOG_FILE = "chucvu_log.txt";
+    // Danh sách lưu trữ thông báo
+    private List<String> actionLogs = new ArrayList<>();
+    // Biến đếm số lượng thông báo
+    private int notificationCount = 0;
+    private static final long TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000; // 24 tiếng tính bằng milliseconds
 
     /**
      * Creates new form DiaLog_ChucVu
@@ -76,48 +89,70 @@ public class DiaLog_ChucVu extends javax.swing.JDialog {
     public void addChucVu() {
         boolean isValid = true;
 
-        // Reset viền trước khi kiểm tra
         resetBorder(txt_tenchucVu);
 
-        // Kiểm tra từng field
         String tenCV = txt_tenchucVu.getText().trim();
         if (tenCV.isEmpty()) {
             setErrorBorder(txt_tenchucVu);
             isValid = false;
         }
 
-        // Nếu có lỗi, hiển thị thông báo và dừng lại
         if (!isValid) {
             Notifications.getInstance().show(Notifications.Type.INFO, "Vui lòng nhập đủ thông tin!");
             return;
         }
 
-        // 🔎 Kiểm tra tên đã tồn tại chưa
         if (cvdao.isTenChucVuExist(tenCV)) {
-            Notifications.getInstance().show(Notifications.Type.INFO, "Tên loại vật tư đã tồn tại!");
+            Notifications.getInstance().show(Notifications.Type.INFO, "Tên chức vụ đã tồn tại!");
             setErrorBorder(txt_tenchucVu);
             return;
         }
-        // Nếu hợp lệ, tiếp tục thêm vật tư
+
         model_ChucVu cv = new model_ChucVu();
-        cv.setTenChucVu(txt_tenchucVu.getText().trim());
+        cv.setTenChucVu(tenCV);
 
         try {
-            cvdao.insert(cv);
+            // Sinh mã vật tư trước khi insert
+            String maCV = cvdao.selectMaxId();
+            cv.setMaChucVu(maCV); // Gán mã vào vt
+            cvdao.insert(cv); // Thêm vào CSDL
+
             Notifications.getInstance().show(Notifications.Type.SUCCESS, "Thêm chức vụ thành công!");
 
-            // 🔔 Cập nhật bảng trong pnVatTu
+            // Ghi log
+            String log = String.format("Thêm|%s|%s|%s",
+                    maCV,
+                    tenCV,
+                    new SimpleDateFormat("HH:mm:ss dd/MM/yyyy").format(new Date()));
+            writeLogToFile(log);
+
             if (pnChucVuRef != null) {
                 pnChucVuRef.fillToTableChucVu();
-                //pnChucVuRef.themThongBao("Thêm", cv.getTenChucVu()); // Cập nhật thông báo
+
             }
 
-            // Đợi thông báo hiển thị xong rồi mới đóng form
-            new Timer(1000, e -> dispose()).start();
+            new Timer(700, e -> dispose()).start();
 
         } catch (Exception e) {
-            Notifications.getInstance().show(Notifications.Type.INFO, "Lỗi: " + e.getMessage());
             Notifications.getInstance().show(Notifications.Type.INFO, "Thêm chức vụ thất bại!");
+            String log = String.format("Thêm thất bại|%s|%s|%s",
+                    cv.getMaChucVu()!= null ?cv.getMaChucVu(): "N/A",
+                    tenCV,
+                    new SimpleDateFormat("HH:mm:ss dd/MM/yyyy").format(new Date()));
+            writeLogToFile(log);
+            if (pnChucVuRef != null) {
+
+            }
+        }
+    }
+
+    //Ghi vào file
+    private void writeLogToFile(String log) {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(LOG_FILE, true))) {
+            writer.write(log);
+            writer.newLine();
+        } catch (IOException e) {
+            Notifications.getInstance().show(Notifications.Type.ERROR, "Lỗi khi ghi log: " + e.getMessage());
         }
     }
 

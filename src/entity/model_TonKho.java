@@ -9,24 +9,20 @@ package entity;
  * @author RubyNgoc
  */
 public class model_TonKho {
-    private String maKho;
-    private String mavatTu;
-    private String soLuong;
+   private String maKho;
+    private String maVatTu;
+    private int soLuong; 
     private String donVi;
-    private String tontoiThieu;
-    private String tontoiDa;
     private String viTri;
 
     public model_TonKho() {
     }
 
-    public model_TonKho(String maKho, String mavatTu, String soLuong, String donVi, String tontoiThieu, String tontoiDa, String viTri) {
+    public model_TonKho(String maKho, String maVatTu, int soLuong, String donVi, String viTri) {
         this.maKho = maKho;
-        this.mavatTu = mavatTu;
+        this.maVatTu = maVatTu;
         this.soLuong = soLuong;
         this.donVi = donVi;
-        this.tontoiThieu = tontoiThieu;
-        this.tontoiDa = tontoiDa;
         this.viTri = viTri;
     }
 
@@ -38,19 +34,19 @@ public class model_TonKho {
         this.maKho = maKho;
     }
 
-    public String getMavatTu() {
-        return mavatTu;
+    public String getMaVatTu() {
+        return maVatTu;
     }
 
-    public void setMavatTu(String mavatTu) {
-        this.mavatTu = mavatTu;
+    public void setMaVatTu(String maVatTu) {
+        this.maVatTu = maVatTu;
     }
 
-    public String getSoLuong() {
+    public int getSoLuong() {
         return soLuong;
     }
 
-    public void setSoLuong(String soLuong) {
+    public void setSoLuong(int soLuong) {
         this.soLuong = soLuong;
     }
 
@@ -62,22 +58,6 @@ public class model_TonKho {
         this.donVi = donVi;
     }
 
-    public String getTontoiThieu() {
-        return tontoiThieu;
-    }
-
-    public void setTontoiThieu(String tontoiThieu) {
-        this.tontoiThieu = tontoiThieu;
-    }
-
-    public String getTontoiDa() {
-        return tontoiDa;
-    }
-
-    public void setTontoiDa(String tontoiDa) {
-        this.tontoiDa = tontoiDa;
-    }
-
     public String getViTri() {
         return viTri;
     }
@@ -85,6 +65,7 @@ public class model_TonKho {
     public void setViTri(String viTri) {
         this.viTri = viTri;
     }
-    
+
+   
     
 }

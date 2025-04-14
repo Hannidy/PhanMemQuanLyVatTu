@@ -9,31 +9,27 @@ import java.util.List;
 import util.JDBCHelper;
 
 public class TonKhoDAO {
+    
     public void insert(model_TonKho tk) {
-        String sql = "INSERT INTO TonKho (MaKho, MaVatTu, SoLuong, DonVi, TonToiThieu, TonToiDa, ViTri) VALUES (?, ?, ?, ?, ?, ?, ?)";
-        String newMaKho = this.selectMaxId(); // Lấy mã vật tư mới
-        JDBCHelper.update(sql,
-                newMaKho,
-                tk.getMaKho(),
-                tk.getMavatTu(),
-                tk.getSoLuong(),
-                tk.getDonVi(),
-                tk.getTontoiThieu(),
-                tk.getTontoiDa(),
-                tk.getViTri());
-    }
+    String sql = "INSERT INTO TonKho (MaKho, MaVatTu, SoLuong, DonVi, ViTri) VALUES (?, ?, ?, ?, ?)";
+    String newMaKho = this.selectMaxId();
+    JDBCHelper.update(sql,
+            newMaKho,
+            tk.getMaVatTu(),
+            tk.getSoLuong(),
+            tk.getDonVi(),
+            tk.getViTri());
+}
 
     public void update(model_TonKho tk) {
-        String sql = "UPDATE TonKho SET MaVatTu = ?, SoLuong = ?, DonVi = ?, TonToiThieu = ?, TonToiDa = ?, ViTri = ? WHERE MaKho = ?";
-        JDBCHelper.update(sql,
-                tk.getSoLuong(),
-                tk.getDonVi(),
-                tk.getTontoiThieu(),
-                tk.getTontoiDa(),
-                tk.getViTri(),
-                tk.getMaKho(),
-                tk.getMavatTu());
-    }
+    String sql = "UPDATE TonKho SET MaVatTu = ?, SoLuong = ?, DonVi = ?, ViTri = ? WHERE MaKho = ?";
+    JDBCHelper.update(sql,
+            tk.getMaVatTu(),
+            tk.getSoLuong(),
+            tk.getDonVi(),
+            tk.getViTri(),
+            tk.getMaKho());
+}
 
     public void delete(String maNhanVien) {
         String sql = "DELETE FROM TonKho WHERE MaKho = ?";
@@ -73,36 +69,35 @@ public class TonKhoDAO {
         return this.selectBySQL(sql);
     }
 
-    protected List<model_TonKho> selectBySQL(String sql, Object... args) {
-        List<model_TonKho> list_TonKho = new ArrayList<>();
-        ResultSet rs = null;
+protected List<model_TonKho> selectBySQL(String sql, Object... args) {
+    List<model_TonKho> list_TonKho = new ArrayList<>();
+    ResultSet rs = null;
 
+    try {
+        rs = JDBCHelper.query(sql, args);
+        while (rs.next()) {
+            model_TonKho tk = new model_TonKho();
+            tk.setMaKho(rs.getString("MaKho"));
+            tk.setMaVatTu(rs.getString("MaVatTu"));
+            tk.setSoLuong(rs.getInt("SoLuong")); // Sửa từ getString sang getInt
+            tk.setDonVi(rs.getString("DonVi"));
+            tk.setViTri(rs.getString("ViTri"));
+            list_TonKho.add(tk);
+        }
+    } catch (SQLException e) {
+        throw new RuntimeException(e);
+    } finally {
         try {
-            rs = JDBCHelper.query(sql, args);
-            while (rs.next()) {
-                model_TonKho tk = new model_TonKho();
-                tk.setMaKho(rs.getString("MaKho"));
-                tk.setMavatTu(rs.getString("MaVatTu")); // Lấy Mã Vật Tư
-                tk.setSoLuong(rs.getString("SoLuong"));
-                tk.setDonVi(rs.getString("DonVi"));
-                tk.setTontoiThieu(rs.getString("TonToiThieu"));
-                tk.setTontoiDa(rs.getString("TonToiDa"));
-                tk.setViTri(rs.getString("ViTri"));
-                list_TonKho.add(tk);
+            if (rs != null) {
+                rs.getStatement().close();
+                rs.close();
             }
         } catch (SQLException e) {
-            throw new RuntimeException(e);
-        } finally {
-            try {
-                if (rs != null) {
-                    rs.getStatement().close(); // Đóng Statement trước
-                    rs.close(); // Đóng ResultSet sau
-                }
-            } catch (SQLException e) {
-            }
+            e.printStackTrace();
         }
-        return list_TonKho;
     }
+    return list_TonKho;
+}
 
 
      public static List<Object[]> kiemKeHangHoa() {
@@ -111,29 +106,38 @@ public class TonKhoDAO {
         SELECT 
             tk.MaKho, 
             tk.MaVatTu, 
-            pn.NgayNhap AS NgayNhap, -- Chỉ lấy ngày nhập từ PHIEUNHAP
-            tk.SoLuong AS SoLuongTonDauThang, 
-            COALESCE(SUM(pnct.SoLuong), 0) AS SoLuongNhap, 
-            COALESCE(SUM(pxct.SoLuong), 0) AS SoLuongXuat, 
-            (tk.SoLuong + COALESCE(SUM(pnct.SoLuong), 0) - COALESCE(SUM(pxct.SoLuong), 0)) AS SoLuongTonCuoiThang
+            tk.SoLuong AS SoLuongTonDauThang,
+            COALESCE((
+                SELECT SUM(ctpn.SoLuong) 
+                FROM CHITIETPHIEUNHAP ctpn 
+                WHERE ctpn.MaVatTu = tk.MaVatTu
+            ), 0) AS SoLuongNhap,
+            COALESCE((
+                SELECT SUM(ctpx.SoLuong) 
+                FROM CHITIETPHIEUXUAT ctpx 
+                WHERE ctpx.MaVatTu = tk.MaVatTu
+            ), 0) AS SoLuongXuat,
+            (tk.SoLuong + 
+             COALESCE((
+                 SELECT SUM(ctpn.SoLuong) 
+                 FROM CHITIETPHIEUNHAP ctpn 
+                 WHERE ctpn.MaVatTu = tk.MaVatTu
+             ), 0) - 
+             COALESCE((
+                 SELECT SUM(ctpx.SoLuong) 
+                 FROM CHITIETPHIEUXUAT ctpx 
+                 WHERE ctpx.MaVatTu = tk.MaVatTu
+             ), 0)) AS SoLuongTonCuoiThang
         FROM TONKHO tk
-        LEFT JOIN CHITIETPHIEUNHAP pnct ON tk.MaVatTu = pnct.MaVatTu
-        LEFT JOIN PHIEUNHAP pn ON pnct.MaPhieuNhap = pn.MaPhieuNhap -- Chỉ JOIN với PHIEUNHAP để lấy ngày nhập
-        LEFT JOIN CHITIETPHIEUXUAT pxct ON tk.MaVatTu = pxct.MaVatTu
-        GROUP BY 
-            tk.MaKho, 
-            tk.MaVatTu, 
-            tk.SoLuong, 
-            pn.NgayNhap -- Chỉ giữ lại Ngày nhập trong GROUP BY
         ORDER BY tk.MaKho, tk.MaVatTu;
-    """; 
+    """;
 
     try (ResultSet rs = JDBCHelper.query(sql)) {
         while (rs.next()) {
             danhSachHangHoa.add(new Object[]{
                 rs.getString("MaKho"),
                 rs.getString("MaVatTu"),
-                rs.getDate("NgayNhap"),  // ✅ Chỉ lấy ngày nhập
+                null, // Không có ngày cụ thể
                 rs.getInt("SoLuongTonDauThang"),
                 rs.getInt("SoLuongNhap"),
                 rs.getInt("SoLuongXuat"),
@@ -146,25 +150,40 @@ public class TonKhoDAO {
     }
     return danhSachHangHoa;
 }
+     
      public static List<Object[]> kiemKePhieuNhap(java.sql.Date ngay) {
     List<Object[]> danhSachHangHoa = new ArrayList<>();
-
     String sql = """
         SELECT 
             tk.MaKho, 
             tk.MaVatTu, 
-            pn.NgayNhap AS NgayNhap,
-            tk.SoLuong AS SoLuongDauKy,  
-            COALESCE(SUM(ctpn.SoLuong), 0) AS SoLuongNhap, 
-            COALESCE(SUM(ctpx.SoLuong), 0) AS SoLuongXuat, 
-            (tk.SoLuong + COALESCE(SUM(ctpn.SoLuong), 0) - COALESCE(SUM(ctpx.SoLuong), 0)) AS SoLuongTonCuoiKy
+            tk.SoLuong AS SoLuongDauKy,
+            COALESCE((
+                SELECT SUM(ctpn.SoLuong) 
+                FROM CHITIETPHIEUNHAP ctpn 
+                JOIN PHIEUNHAP pn ON ctpn.MaPhieuNhap = pn.MaPhieuNhap 
+                WHERE ctpn.MaVatTu = tk.MaVatTu AND pn.NgayNhap = ?
+            ), 0) AS SoLuongNhap,
+            COALESCE((
+                SELECT SUM(ctpx.SoLuong) 
+                FROM CHITIETPHIEUXUAT ctpx 
+                JOIN PHIEUXUAT px ON ctpx.MaPhieuXuat = px.MaPhieuXuat 
+                WHERE ctpx.MaVatTu = tk.MaVatTu AND px.NgayXuat = ?
+            ), 0) AS SoLuongXuat,
+            (tk.SoLuong + 
+             COALESCE((
+                 SELECT SUM(ctpn.SoLuong) 
+                 FROM CHITIETPHIEUNHAP ctpn 
+                 JOIN PHIEUNHAP pn ON ctpn.MaPhieuNhap = pn.MaPhieuNhap 
+                 WHERE ctpn.MaVatTu = tk.MaVatTu AND pn.NgayNhap = ?
+             ), 0) - 
+             COALESCE((
+                 SELECT SUM(ctpx.SoLuong) 
+                 FROM CHITIETPHIEUXUAT ctpx 
+                 JOIN PHIEUXUAT px ON ctpx.MaPhieuXuat = px.MaPhieuXuat 
+                 WHERE ctpx.MaVatTu = tk.MaVatTu AND px.NgayXuat = ?
+             ), 0)) AS SoLuongTonCuoiKy
         FROM TONKHO tk
-        LEFT JOIN CHITIETPHIEUNHAP ctpn ON tk.MaVatTu = ctpn.MaVatTu
-        LEFT JOIN PHIEUNHAP pn ON ctpn.MaPhieuNhap = pn.MaPhieuNhap AND pn.NgayNhap = ?
-        LEFT JOIN CHITIETPHIEUXUAT ctpx ON tk.MaVatTu = ctpx.MaVatTu
-        LEFT JOIN PHIEUXUAT px ON ctpx.MaPhieuXuat = px.MaPhieuXuat AND px.NgayXuat = ?
-        WHERE pn.NgayNhap = ? OR px.NgayXuat = ?
-        GROUP BY tk.MaKho, tk.MaVatTu, pn.NgayNhap, tk.SoLuong
         ORDER BY tk.MaKho, tk.MaVatTu;
     """;
 
@@ -173,7 +192,7 @@ public class TonKhoDAO {
             danhSachHangHoa.add(new Object[]{
                 rs.getString("MaKho"),
                 rs.getString("MaVatTu"),
-                rs.getDate("NgayNhap"), // ✅ Lấy thêm ngày nhập
+                ngay, // Trả về ngày được chọn
                 rs.getInt("SoLuongDauKy"),
                 rs.getInt("SoLuongNhap"),
                 rs.getInt("SoLuongXuat"),
@@ -187,6 +206,7 @@ public class TonKhoDAO {
     
     return danhSachHangHoa;
 }
+     
      public boolean chuyenHang(String maVatTu, String khoXuat, String khoNhan, int soLuong) {
         String sqlCheck = "SELECT SoLuong FROM TonKho WHERE MaKho = ? AND MaVatTu = ?";
         int soLuongTon = 0;

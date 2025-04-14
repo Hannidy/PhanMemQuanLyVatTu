@@ -23,15 +23,17 @@ import javax.swing.table.TableColumn;
 public class BaoHanh_from extends javax.swing.JFrame {
     VatTuLoiDAO VTL = new VatTuLoiDAO();
     private DefaultTableModel baohanhModel;
+    private List<Object[]> danhSach;
     /**
      * Creates new form BaoHanh_from
      */
-    public BaoHanh_from() { 
+    public BaoHanh_from(List<Object[]> danhSach) { 
     initComponents();
+    this.danhSach = danhSach;
     setLocationRelativeTo(this);
     initTable();
     baohanhModel = (DefaultTableModel) tbl_BaoHanh.getModel();
-    fillTable();
+    setData(danhSach);
     }
     
     public void initTable() {
@@ -61,45 +63,32 @@ public class BaoHanh_from extends javax.swing.JFrame {
         }
     });
 }
-    
-    
-public void fillTable() {
-    baohanhModel.setRowCount(0); // Xóa dữ liệu cũ
-
-    // Lấy danh sách từ VatTuLoi_BaoHanh_Form
-    List<Object[]> danhSach = VatTuLoi_BaoHanh_Form.getInstance().getDanhSachGuiBaoHanh();
-    if (danhSach == null || danhSach.isEmpty()) {
-        return; // Không có dữ liệu để hiển thị
+        public JTable getTbl_BaoHanh() {
+        return tbl_BaoHanh;
     }
-
-    // Thêm dữ liệu vào bảng
-    for (Object[] row : danhSach) {
-        baohanhModel.addRow(new Object[]{
-            row[0], // MaKho
-            row[1], // MaVatTu
-            row[3], // TenNhaCungCap
-            row[4]  // TrangThai
-        });
-    }
-}
-
-
- public void themVaoBaoHanh(model_BaoHanh vatTu) {
-        baohanhModel.addRow(new Object[]{
-            vatTu.maKho,
-            vatTu.maVatTu,
-            vatTu.tenVatTu,
-            "Đã gửi bảo hành"
-        });
+    
+     public void setData(List<Object[]> danhSach) {
+        DefaultTableModel model = (DefaultTableModel) tbl_BaoHanh.getModel();
+        model.setRowCount(0);
+        for (Object[] dong : danhSach) {
+            if ("Đang chờ duyệt".equalsIgnoreCase(dong[4].toString())) {
+                model.addRow(new Object[]{dong[0], dong[1], dong[3], dong[4]});
+            }
+        }
     }
 public DefaultTableModel getBaoHanhTableModel() {
     return (DefaultTableModel) tbl_BaoHanh.getModel();
 }
-public JTable getTbl_BaoHanh() {
-    return tbl_BaoHanh;
+public void setData2(List<Object[]> danhSach) {
+    DefaultTableModel model = (DefaultTableModel) tbl_BaoHanh.getModel();
+    model.setRowCount(0);
+    for (Object[] dong : danhSach) {
+        if (dong.length >= 5 && "Đang chờ duyệt".equalsIgnoreCase(dong[4].toString())) {
+            model.addRow(new Object[]{dong[0], dong[1], dong[3], dong[4]}); // MaKho, MaVatTu, TenNhaCungCap, TrangThai
+        }
+    }
 }
-
-
+/**
 public void duyetDong(JTable table) {
     int selectedRow = table.getSelectedRow();
     if (selectedRow == -1) {
@@ -111,7 +100,7 @@ public void duyetDong(JTable table) {
     String maKho = table.getValueAt(selectedRow, 0).toString();
     String maVatTu = table.getValueAt(selectedRow, 1).toString();
     String tenNhaCungCap = table.getValueAt(selectedRow, 2).toString();
-    String trangThai = "Đã được bảo hành"; // Giá trị trong ComboBox
+    String trangThai = "Đã được bảo hành";
 
     // Lấy MaNhaCungCap từ danhSachGuiBaoHanh
     String maNhaCungCap = null;
@@ -119,7 +108,7 @@ public void duyetDong(JTable table) {
     List<Object[]> danhSach = VatTuLoi_BaoHanh_Form.getInstance().getDanhSachGuiBaoHanh();
     for (Object[] dong : danhSach) {
         if (dong[0].toString().equals(maKho) && dong[1].toString().equals(maVatTu) && dong[3].toString().equals(tenNhaCungCap)) {
-            maNhaCungCap = dong[2].toString(); // Lấy MaNhaCungCap từ phần tử thứ 2
+            maNhaCungCap = dong[2].toString();
             selectedDong = dong;
             break;
         }
@@ -146,6 +135,12 @@ public void duyetDong(JTable table) {
         JDBCHelper.update(sql, maVatTu, maNhaCungCap, maKho, tenVatTu, trangThai);
         JOptionPane.showMessageDialog(null, "Đã lưu thông tin bảo hành!");
 
+        // Cập nhật trạng thái trong VatTuLoi_BaoHanh_Form
+        VatTuLoi_BaoHanh_Form vtlForm = VatTuLoi_BaoHanh_Form.getInstance();
+        if (vtlForm != null) {
+            vtlForm.capNhatTrangThaiVatTu(maKho, maVatTu, "Đã được bảo hành");
+        }
+
         // Xóa dòng khỏi danhSachGuiBaoHanh
         if (selectedDong != null) {
             danhSach.remove(selectedDong);
@@ -156,7 +151,6 @@ public void duyetDong(JTable table) {
             @Override
             public void actionPerformed(ActionEvent evt) {
                 DefaultTableModel model = (DefaultTableModel) table.getModel();
-                // Kiểm tra xem selectedRow còn hợp lệ không
                 if (selectedRow >= 0 && selectedRow < model.getRowCount()) {
                     model.removeRow(selectedRow);
                 }
@@ -170,6 +164,84 @@ public void duyetDong(JTable table) {
     }
 }
 
+*/
+public void duyetDong(JTable table) {
+    int selectedRow = table.getSelectedRow();
+    if (selectedRow == -1) {
+        JOptionPane.showMessageDialog(null, "Vui lòng chọn dòng để duyệt.");
+        return;
+    }
+
+    // Lấy dữ liệu từ dòng được chọn
+    String maKho = table.getValueAt(selectedRow, 0).toString();
+    String maVatTu = table.getValueAt(selectedRow, 1).toString();
+    String tenNhaCungCap = table.getValueAt(selectedRow, 2).toString();
+    String trangThai = "Đã được bảo hành";
+
+    // Tìm MaNhaCungCap từ tbl_VatTuLoi trong VatTuLoi_BaoHanh_Form
+    String maNhaCungCap = null;
+    VatTuLoi_BaoHanh_Form vtlForm = VatTuLoi_BaoHanh_Form.getInstance();
+    if (vtlForm != null) {
+        DefaultTableModel modelVatTuLoi = (DefaultTableModel) vtlForm.getTbl_VatTuLoi().getModel();
+        for (int i = 0; i < modelVatTuLoi.getRowCount(); i++) {
+            String tableMaKho = modelVatTuLoi.getValueAt(i, 0).toString();
+            String tableMaVatTu = modelVatTuLoi.getValueAt(i, 1).toString();
+            if (tableMaKho.equals(maKho) && tableMaVatTu.equals(maVatTu)) {
+                maNhaCungCap = modelVatTuLoi.getValueAt(i, 2).toString(); // Cột MaNhaCungCap (index 2)
+                break;
+            }
+        }
+    }
+
+    // Nếu không tìm thấy MaNhaCungCap, vẫn tiếp tục (hoặc đặt giá trị mặc định nếu cần)
+    if (maNhaCungCap == null) {
+        maNhaCungCap = "UNKNOWN"; // Giá trị mặc định, thay đổi nếu cơ sở dữ liệu yêu cầu
+        System.out.println("Không tìm thấy MaNhaCungCap cho MaKho: " + maKho + ", MaVatTu: " + maVatTu);
+    }
+
+    // Cập nhật trạng thái trên giao diện
+    table.setValueAt(trangThai, selectedRow, 3);
+
+    // Lưu vào cơ sở dữ liệu
+    String sql = "INSERT INTO BAOHANH (MaVatTu, MaNhaCungCap, MaKho, TenVatTu, TrangThai, NgayDuyet) VALUES (?, ?, ?, ?, ?, GETDATE())";
+    try {
+        // Lấy TenVatTu từ bảng VATTU
+        String sqlTenVatTu = "SELECT TenVatTu FROM VATTU WHERE MaVatTu = ?";
+        String tenVatTu;
+        try (ResultSet rs = JDBCHelper.query(sqlTenVatTu, maVatTu)) {
+            tenVatTu = rs.next() ? rs.getString("TenVatTu") : "Unknown";
+        }
+
+        JDBCHelper.update(sql, maVatTu, maNhaCungCap, maKho, tenVatTu, trangThai);
+        JOptionPane.showMessageDialog(null, "Đã lưu thông tin bảo hành!");
+
+        // Cập nhật trạng thái trong VatTuLoi_BaoHanh_Form
+        if (vtlForm != null) {
+            vtlForm.capNhatTrangThaiVatTu(maKho, maVatTu, "Đã được bảo hành");
+        }
+
+        // Xóa dòng khỏi danhSach nếu cần
+        if (danhSach != null) {
+            danhSach.removeIf(dong -> dong[0].toString().equals(maKho) && dong[1].toString().equals(maVatTu));
+        }
+
+        // Xóa dòng khỏi bảng sau 5 phút
+        Timer timer = new Timer(300000, new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent evt) {
+                DefaultTableModel model = (DefaultTableModel) table.getModel();
+                if (selectedRow >= 0 && selectedRow < model.getRowCount()) {
+                    model.removeRow(selectedRow);
+                }
+            }
+        });
+        timer.setRepeats(false);
+        timer.start();
+    } catch (Exception e) {
+        e.printStackTrace();
+        JOptionPane.showMessageDialog(null, "Lỗi khi lưu thông tin bảo hành: " + e.getMessage());
+    }
+}
     
     @SuppressWarnings("unchecked")
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
@@ -247,37 +319,37 @@ public void duyetDong(JTable table) {
     /**
      * @param args the command line arguments
      */
-    public static void main(String args[]) {
-        /* Set the Nimbus look and feel */
-        //<editor-fold defaultstate="collapsed" desc=" Look and feel setting code (optional) ">
-        /* If Nimbus (introduced in Java SE 6) is not available, stay with the default look and feel.
-         * For details see http://download.oracle.com/javase/tutorial/uiswing/lookandfeel/plaf.html 
-         */
-        try {
-            for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
-                if ("Nimbus".equals(info.getName())) {
-                    javax.swing.UIManager.setLookAndFeel(info.getClassName());
-                    break;
-                }
-            }
-        } catch (ClassNotFoundException ex) {
-            java.util.logging.Logger.getLogger(BaoHanh_from.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
-        } catch (InstantiationException ex) {
-            java.util.logging.Logger.getLogger(BaoHanh_from.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
-        } catch (IllegalAccessException ex) {
-            java.util.logging.Logger.getLogger(BaoHanh_from.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
-        } catch (javax.swing.UnsupportedLookAndFeelException ex) {
-            java.util.logging.Logger.getLogger(BaoHanh_from.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
-        }
-        //</editor-fold>
-
-        /* Create and display the form */
-        java.awt.EventQueue.invokeLater(new Runnable() {
-            public void run() {
-                new BaoHanh_from().setVisible(true);
-            }
-        });
-    }
+//    public static void main(String args[]) {
+//        /* Set the Nimbus look and feel */
+//        //<editor-fold defaultstate="collapsed" desc=" Look and feel setting code (optional) ">
+//        /* If Nimbus (introduced in Java SE 6) is not available, stay with the default look and feel.
+//         * For details see http://download.oracle.com/javase/tutorial/uiswing/lookandfeel/plaf.html 
+//         */
+//        try {
+//            for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
+//                if ("Nimbus".equals(info.getName())) {
+//                    javax.swing.UIManager.setLookAndFeel(info.getClassName());
+//                    break;
+//                }
+//            }
+//        } catch (ClassNotFoundException ex) {
+//            java.util.logging.Logger.getLogger(BaoHanh_from.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+//        } catch (InstantiationException ex) {
+//            java.util.logging.Logger.getLogger(BaoHanh_from.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+//        } catch (IllegalAccessException ex) {
+//            java.util.logging.Logger.getLogger(BaoHanh_from.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+//        } catch (javax.swing.UnsupportedLookAndFeelException ex) {
+//            java.util.logging.Logger.getLogger(BaoHanh_from.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+//        }
+//        //</editor-fold>
+//
+//        /* Create and display the form */
+//        java.awt.EventQueue.invokeLater(new Runnable() {
+//            public void run() {
+//                new BaoHanh_from().setVisible(true);
+//            }
+//        });
+//    }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton btn_Duyet;

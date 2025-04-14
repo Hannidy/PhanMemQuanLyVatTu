@@ -31,23 +31,46 @@ public class PhieuNhapDAO {
     return list;
 }
 
-    public model_PhieuNhap selectById(String maPhieuNhap) {
-        String sql = "SELECT * FROM PhieuNhap WHERE MaPhieuNhap = ?";
-        try (ResultSet rs = JDBCHelper.query(sql, maPhieuNhap)) {
-            if (rs.next()) {
+   public List<model_PhieuNhap> selectById(String maPhieuNhap) {
+    List<model_PhieuNhap> list = new ArrayList<>();
+    String sql = "SELECT * FROM PhieuNhap WHERE MaPhieuNhap LIKE ?";  // Sử dụng LIKE để tìm kiếm linh hoạt
+
+    try (ResultSet rs = JDBCHelper.query(sql, "%" + maPhieuNhap + "%")) {  // Thêm % để tìm kiếm theo phần từ khóa
+        while (rs.next()) {
+            model_PhieuNhap pn = new model_PhieuNhap();
+            pn.setMaPhieuNhap(rs.getString("MaPhieuNhap"));
+            pn.setNgayNhap(rs.getDate("NgayNhap"));
+            pn.setMaKho(rs.getString("MaKho"));
+            pn.setMaNhaCungCap(rs.getString("MaNhaCungCap"));
+            pn.setTrangThai(rs.getString("TrangThai"));
+            list.add(pn);
+        }
+    } catch (Exception e) {
+        e.printStackTrace();
+    }
+
+    return list;  // Trả về danh sách phiếu nhập tìm được
+}
+// Phương thức tìm kiếm tùy chỉnh theo SQL
+    public List<model_PhieuNhap> selectBySql(String sql, Object... args) {
+        List<model_PhieuNhap> list = new ArrayList<>();
+        try (ResultSet rs = JDBCHelper.query(sql, args)) {
+            while (rs.next()) {
                 model_PhieuNhap pn = new model_PhieuNhap();
                 pn.setMaPhieuNhap(rs.getString("MaPhieuNhap"));
                 pn.setNgayNhap(rs.getDate("NgayNhap"));
                 pn.setMaKho(rs.getString("MaKho"));
                 pn.setMaNhaCungCap(rs.getString("MaNhaCungCap"));
                 pn.setTrangThai(rs.getString("TrangThai"));
-                return pn;
+                list.add(pn);
             }
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (SQLException e) {
+            throw new RuntimeException("Lỗi truy vấn dữ liệu phiếu nhập: " + e.getMessage(), e);
         }
-        return null;
+        return list;
     }
+
+    
 
     public void insert(model_PhieuNhap pn) {
         String sql = "INSERT INTO PhieuNhap (MaPhieuNhap, NgayNhap, MaKho, MaNhaCungCap, TrangThai) VALUES (?, ?, ?, ?, ?)";
@@ -75,4 +98,5 @@ public class PhieuNhapDAO {
         String sql = "DELETE FROM PhieuNhap WHERE MaPhieuNhap = ?";
         JDBCHelper.update(sql, maPhieuNhap);
     }
+    
 }

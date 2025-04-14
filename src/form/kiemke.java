@@ -1,12 +1,5 @@
-  /*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JFrame.java to edit this template
- */
 package form;
 
-//import DAO.DAO_PHIEUXUAT;
-//import dao.DAO_KHO;
-//import dao.DAO_PHIEUNHAP;
 import com.formdev.flatlaf.FlatLaf;
 import com.formdev.flatlaf.fonts.roboto.FlatRobotoFont;
 import com.formdev.flatlaf.themes.FlatMacDarkLaf;
@@ -19,104 +12,72 @@ import java.awt.Font;
 import java.util.Date;
 import javax.swing.UIManager;
 
-/**
- *
- * @author ANH KHOA
- */
 public class kiemke extends javax.swing.JFrame {
-    private DefaultTableModel tableModel1; 
-    //List<Object[]> danhSachHangHoa = DAO_KHO.kiemKeHangHoa();
-                
-    /**
-     * Creates new form kiemke
-     */                                                         
+
+    private DefaultTableModel tableModel1;
+
     public kiemke() {
         initComponents();
-         tableModel1 = (DefaultTableModel) tblkiemke.getModel();
-         kiemThuKiemKe();
-         setLocationRelativeTo(this);
-    } 
+        tableModel1 = (DefaultTableModel) tblkiemke.getModel();
+        kiemThuKiemKe();
+        setLocationRelativeTo(this);
+    }
+
     private void kiemThuKiemKe() {
-    List<Object[]> danhSachHangHoa = TonKhoDAO.kiemKeHangHoa();
-    
-    if (danhSachHangHoa.isEmpty()) {
-        JOptionPane.showMessageDialog(this, "Không có dữ liệu kiểm kê!", "Kiểm thử", JOptionPane.WARNING_MESSAGE);
-        return;
+        List<Object[]> danhSachHangHoa = TonKhoDAO.kiemKeHangHoa();
+
+        if (danhSachHangHoa.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Không có dữ liệu kiểm kê!", "Kiểm kê", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        tableModel1.setRowCount(0); // Xóa dữ liệu cũ
+
+        for (Object[] row : danhSachHangHoa) {
+            tableModel1.addRow(new Object[]{
+                row[0], // MaKho
+                row[1], // MaVatTu
+                row[2], // NgayNhap (có thể null)
+                row[3], // SoLuongDauKy
+                row[4], // SoLuongNhap
+                row[5], // SoLuongXuat
+                row[6] // SoLuongTonCuoiKy
+            });
+        }
+
+        JOptionPane.showMessageDialog(this, "Kiểm kê thành công!", "Kiểm kê", JOptionPane.INFORMATION_MESSAGE);
     }
 
-    DefaultTableModel model = (DefaultTableModel) tblkiemke.getModel();
-    model.setRowCount(0); // Xóa dữ liệu cũ
+    public void locDuLieuTheoThoiGian() {
+        tableModel1.setRowCount(0);
 
-    for (Object[] row : danhSachHangHoa) {
-        model.addRow(row); // Thêm dữ liệu vào bảng
-    }
+        java.util.Date selectedDate = data_boloc.getDate();
+        if (selectedDate != null) {
+            java.sql.Date sqlDate = new java.sql.Date(selectedDate.getTime());
+            System.out.println("Ngày được chọn: " + sqlDate);
 
-    JOptionPane.showMessageDialog(this, "kiểm kê thành công!", "Kiểm kê", JOptionPane.INFORMATION_MESSAGE);
+            List<Object[]> danhSach = TonKhoDAO.kiemKePhieuNhap(sqlDate);
 
-    }
-    
-    /**
-     * 
-     * private void kiemThuKiemKe() {
-   
-
-    if (danhSachHangHoa.isEmpty()) {
-        JOptionPane.showMessageDialog(this, "Không có dữ liệu kiểm kê!", "Kiểm thử", JOptionPane.WARNING_MESSAGE);
-        return;
-    }
-
-    DefaultTableModel model = (DefaultTableModel) tblkiemke.getModel();
-    model.setRowCount(0); // Xóa dữ liệu cũ
-
-    for (Object[] row : danhSachHangHoa) {
-        int soLuongTonKho = Integer.parseInt(row[0].toString()); // Cột 0: Số lượng tồn kho ban đầu
-        int soLuongNhap = Integer.parseInt(row[1].toString());   // Cột 1: Số lượng nhập
-        int soLuongXuat = Integer.parseInt(row[2].toString());   // Cột 2: Số lượng xuất
-        
-        // Cập nhật số lượng tồn kho theo công thức mới
-        soLuongTonKho = soLuongTonKho + soLuongNhap - soLuongXuat;
-
-        model.addRow(new Object[]{soLuongTonKho, soLuongNhap, soLuongXuat});
-    }
-
-    JOptionPane.showMessageDialog(this, "Kiểm thử kiểm kê thành công!", "Kiểm thử", JOptionPane.INFORMATION_MESSAGE);
-}
-
-     */
-public void locDuLieuTheoThoiGian() {
-    DefaultTableModel model = (DefaultTableModel) tblkiemke.getModel();
-    model.setRowCount(0);
-
-    java.util.Date selectedDate = data_boloc.getDate();
-    if (selectedDate != null) {
-        java.sql.Date sqlDate = new java.sql.Date(selectedDate.getTime());
-        System.out.println("Ngày được chọn: " + sqlDate);
-
-        List<Object[]> danhSach = TonKhoDAO.kiemKePhieuNhap(sqlDate);
-
-        if (!danhSach.isEmpty()) {
-            for (Object[] row : danhSach) {
-                model.addRow(row);
+            if (!danhSach.isEmpty()) {
+                for (Object[] row : danhSach) {
+                    tableModel1.addRow(new Object[]{
+                        row[0], // MaKho
+                        row[1], // MaVatTu
+                        row[2], // NgayNhap
+                        row[3], // SoLuongDauKy
+                        row[4], // SoLuongNhap
+                        row[5], // SoLuongXuat
+                        row[6] // SoLuongTonCuoiKy
+                    });
+                }
+            } else {
+                JOptionPane.showMessageDialog(this, "Không có dữ liệu kiểm kê cho ngày đã chọn.");
             }
         } else {
-            JOptionPane.showMessageDialog(this, "Không có dữ liệu kiểm kê cho ngày đã chọn.");
+            JOptionPane.showMessageDialog(this, "Vui lòng chọn ngày.");
         }
-    } else {
-        JOptionPane.showMessageDialog(this, "Vui lòng chọn ngày.");
     }
-}
 
-
-//    public static void main(String[] args) {
-//        SwingUtilities.invokeLater(() -> new KiemKeView().setVisible(true));
-//    }
-
-
-    /**
-     * This method is called from within the constructor to initialize the form.
-     * WARNING: Do NOT modify this code. The content of this method is always
-     * regenerated by the Form Editor.
-     */
     @SuppressWarnings("unchecked")
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
@@ -199,56 +160,14 @@ public void locDuLieuTheoThoiGian() {
     }// </editor-fold>//GEN-END:initComponents
 
     private void BtnKiemTraActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_BtnKiemTraActionPerformed
-        // TODO add your handling code here:
-      locDuLieuTheoThoiGian();
+    locDuLieuTheoThoiGian();
     }//GEN-LAST:event_BtnKiemTraActionPerformed
 
     private void formWindowClosing(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowClosing
-        // TODO add your handling code here:
-        dispose();
+    dispose();
     }//GEN-LAST:event_formWindowClosing
 
-    /**
-     * @param args the command line arguments
-     */
-//    public static void main(String args[]) {
-//        FlatRobotoFont.install();
-//        FlatLaf.registerCustomDefaultsSource("themes");
-//        UIManager.put("defaultFont", new Font(FlatRobotoFont.FAMILY, Font.PLAIN, 13));
-//        FlatMacDarkLaf.setup();
-//        
-//        /* Set the Nimbus look and feel */
-//        //<editor-fold defaultstate="collapsed" desc=" Look and feel setting code (optional) ">
-//        /* If Nimbus (introduced in Java SE 6) is not available, stay with the default look and feel.
-//         * For details see http://download.oracle.com/javase/tutorial/uiswing/lookandfeel/plaf.html 
-//         */
-//        try {
-//            for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
-//                if ("Nimbus".equals(info.getName())) {
-//                    javax.swing.UIManager.setLookAndFeel(info.getClassName());
-//                    break;
-//                }
-//            }
-//        } catch (ClassNotFoundException ex) {
-//            java.util.logging.Logger.getLogger(kiemke.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
-//        } catch (InstantiationException ex) {
-//            java.util.logging.Logger.getLogger(kiemke.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
-//        } catch (IllegalAccessException ex) {
-//            java.util.logging.Logger.getLogger(kiemke.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
-//        } catch (javax.swing.UnsupportedLookAndFeelException ex) {
-//            java.util.logging.Logger.getLogger(kiemke.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
-//        }
-//        //</editor-fold>
-//
-//        /* Create and display the form */
-//        java.awt.EventQueue.invokeLater(new Runnable() {
-//            public void run() {
-//                new kiemke().setVisible(true);
-//               
-//            }
-//        });
-//    }
-
+ 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton BtnKiemTra;
     private com.toedter.calendar.JDateChooser data_boloc;

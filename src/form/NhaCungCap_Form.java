@@ -2,6 +2,7 @@ package form;
 
 import dao.NhaCungCapDAO;
 import entity.model_NhaCungCap;
+import form.BaoHanh_from;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -305,44 +306,40 @@ public class NhaCungCap_Form extends TabbedForm {
     }//GEN-LAST:event_btn_suaActionPerformed
 
     private void btn_BaoHanhActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btn_BaoHanhActionPerformed
-        int selectedRow = tbl_nhacungCap.getSelectedRow();
-    if (selectedRow == -1) {
-        Notifications.getInstance().show(Notifications.Type.INFO, "Vui lòng chọn một nhà cung cấp!");
-        return;
-    }
-
-    String selectedMaNhaCungCap = tbl_nhacungCap.getValueAt(selectedRow, 0).toString(); // Lấy MaNhaCungCap từ cột 0
-    BaoHanh_from baoHanhForm = new BaoHanh_from();
+  // Tạo instance của BaoHanh_from và lấy model của bảng tbl_BaoHanh
+    BaoHanh_from baoHanhForm = new BaoHanh_from(VTL.getDanhSachDangChoDuyet());
     DefaultTableModel modelBaoHanh = (DefaultTableModel) baoHanhForm.getTbl_BaoHanh().getModel();
     modelBaoHanh.setRowCount(0); // Xóa dữ liệu cũ
 
-    // Lấy danh sách từ VatTuLoi_BaoHanh_Form thông qua getter
-    List<Object[]> danhSach = VTL.getDanhSachGuiBaoHanh();
+    // Lấy danh sách các dòng "Đang chờ duyệt" từ VatTuLoi_BaoHanh_Form
+    List<Object[]> danhSach = VTL.getDanhSachDangChoDuyet();
     if (danhSach == null || danhSach.isEmpty()) {
-        Notifications.getInstance().show(Notifications.Type.INFO, "Không có vật tư nào được gửi bảo hành!");
+        Notifications.getInstance().show(Notifications.Type.INFO, "Không có vật tư nào đang chờ duyệt!");
+        baoHanhForm.dispose();
         return;
     }
 
-    // Debug: In danhSachGuiBaoHanh để kiểm tra dữ liệu
-    System.out.println("Danh sách gửi bảo hành:");
+    // Debug: In danh sách để kiểm tra
+    System.out.println("Danh sách đang chờ duyệt:");
     for (Object[] dong : danhSach) {
-        System.out.println("MaKho: " + dong[0] + ", MaVatTu: " + dong[1] + ", MaNhaCungCap: " + dong[2] + ", TenNhaCungCap: " + dong[3] + ", TrangThai: " + dong[4]);
+      //  System.out.println("MaKho: " + dong[0] + ", MaVatTu: " + dong[1] + ", MaNhaCungCap: " + dong[2] + ", TenNhaCungCap: " + dong[3] + ", TrangThai: " + dong[4]);
     }
-    System.out.println("Selected MaNhaCungCap: " + selectedMaNhaCungCap);
 
-    // Chỉ hiển thị vật tư lỗi của nhà cung cấp được chọn và có trạng thái "Đang chờ duyệt"
+    // Thêm tất cả các dòng "Đang chờ duyệt" vào tbl_BaoHanh
     for (Object[] dong : danhSach) {
-        if (dong.length >= 5 && dong[2].toString().equals(selectedMaNhaCungCap) && dong[4].toString().equals("Đang chờ duyệt")) {
-            modelBaoHanh.addRow(new Object[]{dong[0], dong[1], dong[3], dong[4]}); // Hiển thị TenNhaCungCap (dong[3])
+        if (dong.length >= 5 && "Đang chờ duyệt".equalsIgnoreCase(dong[4].toString())) {
+            modelBaoHanh.addRow(new Object[]{dong[0], dong[1], dong[3], dong[4]}); // MaKho, MaVatTu, TenNhaCungCap, TrangThai
         }
     }
 
+    // Kiểm tra xem bảng có dữ liệu không
     if (modelBaoHanh.getRowCount() == 0) {
-        Notifications.getInstance().show(Notifications.Type.INFO, "Không có vật tư lỗi nào của nhà cung cấp này đang chờ duyệt!");
+        Notifications.getInstance().show(Notifications.Type.INFO, "Không có vật tư nào đang chờ duyệt!");
         baoHanhForm.dispose();
     } else {
         baoHanhForm.setVisible(true);
     }
+   
     }//GEN-LAST:event_btn_BaoHanhActionPerformed
 
     @Override

@@ -8,6 +8,18 @@ public class model_ChiTietPhieuNhap {
     private float soLuongNhap;   // theo đơn vị gốc
     private float soLuongQuyDoi; // theo đơn vị chuyển đổi
 
+    // Constructors, getters, setters
+    public model_ChiTietPhieuNhap() {}
+
+    public model_ChiTietPhieuNhap(String maPhieuNhap, String maVatTu, int donViGoc, int donViChuyenDoi, float soLuongNhap, float soLuongQuyDoi) {
+        this.maPhieuNhap = maPhieuNhap;
+        this.maVatTu = maVatTu;
+        this.donViGoc = donViGoc;
+        this.donViChuyenDoi = donViChuyenDoi;
+        this.soLuongNhap = soLuongNhap;
+        this.soLuongQuyDoi = soLuongQuyDoi;
+    }
+    
     // Getters và Setters
     public String getMaPhieuNhap() {
         return maPhieuNhap;
@@ -24,7 +36,7 @@ public class model_ChiTietPhieuNhap {
     public void setMaVatTu(String maVatTu) {
         this.maVatTu = maVatTu;
     }
-
+    
     public int getDonViChuyenDoi() {
         return donViChuyenDoi;
     }
@@ -56,4 +68,5 @@ public class model_ChiTietPhieuNhap {
     public void setSoLuongQuyDoi(float soLuongQuyDoi) {
         this.soLuongQuyDoi = soLuongQuyDoi;
     }
+   
 }

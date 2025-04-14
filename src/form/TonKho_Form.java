@@ -46,11 +46,9 @@ public class TonKho_Form extends TabbedForm {
                 for (model_TonKho tk : list_TonKho) {
                     tblModelTonKho.addRow(new Object[]{
                         tk.getMaKho(),
-                        tk.getMavatTu(),
+                        tk.getMaVatTu(),
                         tk.getSoLuong(),
                         tk.getDonVi(),
-                        tk.getTontoiDa(),
-                        tk.getTontoiThieu(),
                         tk.getViTri()
                     });
                 }
@@ -298,20 +296,20 @@ public class TonKho_Form extends TabbedForm {
 
         tbl_TonKho.setModel(new javax.swing.table.DefaultTableModel(
             new Object [][] {
-                {null, null, null, null, null, null, null},
-                {null, null, null, null, null, null, null},
-                {null, null, null, null, null, null, null},
-                {null, null, null, null, null, null, null}
+                {null, null, null, null, null},
+                {null, null, null, null, null},
+                {null, null, null, null, null},
+                {null, null, null, null, null}
             },
             new String [] {
-                "Mã kho", "Mã vật tư", "Số lượng", "Đơn vị", "Tồn tối thiểu", "Tồn tối đa", "Vị trí "
+                "Mã kho", "Mã vật tư", "Số lượng", "Đơn vị", "Vị trí "
             }
         ) {
             Class[] types = new Class [] {
-                java.lang.String.class, java.lang.String.class, java.lang.String.class, java.lang.String.class, java.lang.String.class, java.lang.Object.class, java.lang.Object.class
+                java.lang.String.class, java.lang.String.class, java.lang.String.class, java.lang.String.class, java.lang.Object.class
             };
             boolean[] canEdit = new boolean [] {
-                false, true, true, true, true, true, true
+                false, true, true, true, true
             };
 
             public Class getColumnClass(int columnIndex) {

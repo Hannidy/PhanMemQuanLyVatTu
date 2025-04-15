@@ -8,8 +8,13 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Pattern;
 import javax.swing.JOptionPane;
+import javax.swing.RowFilter;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableRowSorter;
 import tabbed.TabbedForm;
 import util.Message;
 import raven.toast.Notifications;
@@ -27,6 +32,14 @@ public class LoaiVatTu_Form extends TabbedForm {
         initComponents();
         tbl_ModelLoaiVatTu = (DefaultTableModel) tbl_loaivatTu.getModel();
         fillToTableLoaiVatTu();
+        this.addSearchFilter();
+        this.addSearchButtonAction();
+        initcomboBox();
+    }
+
+    public void initcomboBox() {
+        cbo_timKiem.addItem("Mã loại vật tư");
+        cbo_timKiem.addItem("Tên loại vật tư");
     }
 
     public void fillToTableLoaiVatTu() {
@@ -164,6 +177,103 @@ public class LoaiVatTu_Form extends TabbedForm {
         return dsMaLoai;
     }
 
+    public void addSearchFilter() {  // Gắn một listener (trình theo dõi) vào txt_timKiem
+        txt_timKiem.getDocument().addDocumentListener(new DocumentListener() {
+            public void insertUpdate(DocumentEvent e) {
+                autoSearch();
+            }
+
+            public void removeUpdate(DocumentEvent e) {
+                autoSearch();
+            }
+
+            public void changedUpdate(DocumentEvent e) {
+                autoSearch();
+            }
+
+            private void autoSearch() {  // Tìm kiếm theo combobox
+                String selectedCriteria = (String) cbo_timKiem.getSelectedItem();
+                String keyword = txt_timKiem.getText().trim();
+
+                int columnIndex = -1;
+                switch (selectedCriteria) {
+                    case "Mã loại vật tư":
+                        columnIndex = 0;
+                        break;
+                    case "Tên loại vật tư":
+                        columnIndex = 1;
+                        break;
+                }
+
+                if (keyword.isEmpty()) {
+                    TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>((DefaultTableModel) tbl_loaivatTu.getModel());
+                    tbl_loaivatTu.setRowSorter(sorter);
+                    sorter.setRowFilter(null);
+                    return;
+                }
+
+                // ✅ Lọc tự động (không giới hạn mã phải theo định dạng gì)
+                TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>((DefaultTableModel) tbl_loaivatTu.getModel());
+                tbl_loaivatTu.setRowSorter(sorter);
+                sorter.setRowFilter(RowFilter.regexFilter("(?i)" + Pattern.quote(keyword), columnIndex));
+            }
+        });
+    }
+
+    public void searchFilter() {
+        String keyword = txt_timKiem.getText().trim().toLowerCase();
+        DefaultTableModel model = (DefaultTableModel) tbl_loaivatTu.getModel();
+        TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>(model);
+        tbl_loaivatTu.setRowSorter(sorter);
+
+        sorter.setRowFilter(new RowFilter<DefaultTableModel, Integer>() {
+            @Override
+            public boolean include(RowFilter.Entry<? extends DefaultTableModel, ? extends Integer> entry) {
+                for (int i = 0; i < 3; i++) { // Cột 0: Mã vật tư, 1: Tên, 2: Mã loại
+                    String value = entry.getStringValue(i).toLowerCase();
+                    if (value.contains(keyword)) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+        });
+    }
+
+    private void addSearchButtonAction() {
+        btn_timKiem.addActionListener(e -> {
+            String selectedCriteria = (String) cbo_timKiem.getSelectedItem();
+            String keyword = txt_timKiem.getText().trim();
+
+            if (keyword.isEmpty()) {
+                Notifications.getInstance().show(Notifications.Type.INFO, "Vui lòng nhập từ khóa tìm kiếm!");
+                return;
+            }
+
+            int columnIndex = -1;
+
+            switch (selectedCriteria) {
+                case "Mã loại vật tư":
+                    columnIndex = 0;
+                    break;
+                case "Tên loại vật tư":
+                    columnIndex = 1;
+                    break;
+            }
+
+            if (columnIndex == -1) {
+                Notifications.getInstance().show(Notifications.Type.INFO, "Tiêu chí tìm kiếm không hợp lệ!");
+                return;
+            }
+
+            DefaultTableModel model = (DefaultTableModel) tbl_loaivatTu.getModel();
+            TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>(model);
+            tbl_loaivatTu.setRowSorter(sorter);
+
+            sorter.setRowFilter(RowFilter.regexFilter("(?i)" + Pattern.quote(keyword), columnIndex));
+        });
+    }
+
     @SuppressWarnings("unchecked")
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
@@ -176,6 +286,7 @@ public class LoaiVatTu_Form extends TabbedForm {
         btn_sua = new javax.swing.JButton();
         btn_them = new javax.swing.JButton();
         btn_xoa = new javax.swing.JButton();
+        cbo_timKiem = new javax.swing.JComboBox<>();
 
         jLabel1.setFont(new java.awt.Font("Segoe UI", 1, 36)); // NOI18N
         jLabel1.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
@@ -252,6 +363,8 @@ public class LoaiVatTu_Form extends TabbedForm {
                         .addComponent(btn_timKiem)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(txt_timKiem, javax.swing.GroupLayout.PREFERRED_SIZE, 345, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(18, 18, 18)
+                        .addComponent(cbo_timKiem, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                         .addComponent(btn_them)
                         .addGap(18, 18, 18)
@@ -272,7 +385,8 @@ public class LoaiVatTu_Form extends TabbedForm {
                         .addComponent(txt_timKiem, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addComponent(btn_sua)
                         .addComponent(btn_xoa)
-                        .addComponent(btn_them)))
+                        .addComponent(btn_them)
+                        .addComponent(cbo_timKiem, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
                 .addGap(18, 18, 18)
                 .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 514, Short.MAX_VALUE)
                 .addContainerGap())
@@ -324,9 +438,10 @@ public class LoaiVatTu_Form extends TabbedForm {
     private javax.swing.JButton btn_them;
     private javax.swing.JButton btn_timKiem;
     private javax.swing.JButton btn_xoa;
+    private javax.swing.JComboBox<String> cbo_timKiem;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JScrollPane jScrollPane1;
-    javax.swing.JTable tbl_loaivatTu;
+    private javax.swing.JTable tbl_loaivatTu;
     private javax.swing.JTextField txt_timKiem;
     // End of variables declaration//GEN-END:variables
 }

@@ -6,6 +6,7 @@ import form.BaoHanh_from;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import dao.LichSuHoatDongDAO;
 import javax.swing.JButton;
 import javax.swing.JOptionPane;
 import javax.swing.table.DefaultTableModel;
@@ -19,6 +20,7 @@ public class NhaCungCap_Form extends TabbedForm {
     private DefaultTableModel tbl_ModelNhaCungCap;
     private NhaCungCapDAO nccdao = new NhaCungCapDAO();
     private List<model_NhaCungCap> list_NhaCungCap = new ArrayList<model_NhaCungCap>();
+    private LichSuHoatDongDAO lshdDao = new LichSuHoatDongDAO();
      private JButton btnBaoHanh;
     private List<Object[]> danhSachGuiBaoHanh = new ArrayList<>();
     private String selectedtenNCC = "";
@@ -61,28 +63,33 @@ public class NhaCungCap_Form extends TabbedForm {
     }
     public void deleteNhaCungCap() {
         try {
-            // Lấy chỉ số dòng đang chọn
             int row = tbl_nhacungCap.getSelectedRow();
             if (row < 0) {
                 Notifications.getInstance().show(Notifications.Type.INFO, "Bạn phải chọn một dòng để xóa!");
                 return;
             }
 
-            // Lấy mã nhà cung cấp từ bảng
             String maNhaCungCap = tbl_nhacungCap.getValueAt(row, 0).toString();
+            String tenNhaCungCap = tbl_nhacungCap.getValueAt(row, 1).toString();
 
-            // Hiển thị hộp thoại xác nhận
             int confirm = JOptionPane.showConfirmDialog(null, "Bạn có chắc chắn muốn xóa nhà cung cấp này?",
                     "Xác nhận", JOptionPane.YES_NO_OPTION);
             if (confirm == JOptionPane.YES_OPTION) {
-                // Thực hiện xóa
                 nccdao.delete(maNhaCungCap);
                 fillToTableNhaCungCap();
                 Notifications.getInstance().show(Notifications.Type.SUCCESS, "Xóa nhà cung cấp thành công!");
+
+                // Ghi vào bảng LICHSUHOATDONG
+                lshdDao.saveThaoTac("Xóa", "Nhà Cung Cấp", "Xóa nhà cung cấp: Mã: " + maNhaCungCap + ", Tên: " + tenNhaCungCap);
             }
-        } catch (Exception e) { // In lỗi ra console để debug dễ hơn
-            // In lỗi ra console để debug dễ hơn
-            Notifications.getInstance().show(Notifications.Type.INFO, "Lỗi khi xóa nhà cung cấp: ");
+        } catch (Exception e) {
+            Notifications.getInstance().show(Notifications.Type.INFO, "Lỗi khi xóa nhà cung cấp: " + e.getMessage());
+
+            // Ghi vào bảng LICHSUHOATDONG khi thất bại
+            int row = tbl_nhacungCap.getSelectedRow();
+            String maNhaCungCap = row >= 0 ? tbl_nhacungCap.getValueAt(row, 0).toString() : "N/A";
+            String tenNhaCungCap = row >= 0 ? tbl_nhacungCap.getValueAt(row, 1).toString() : "N/A";
+            lshdDao.saveThaoTac("Xóa thất bại", "Nhà Cung Cấp", "Xóa nhà cung cấp thất bại: Mã: " + maNhaCungCap + ", Tên: " + tenNhaCungCap);
         }
     }
 
@@ -93,36 +100,30 @@ public class NhaCungCap_Form extends TabbedForm {
             return;
         }
 
-        // Lấy dữ liệu từ JTable với 5 cột
         String maNCC = tbl_nhacungCap.getValueAt(row, 0).toString();
         String tenNCC = tbl_nhacungCap.getValueAt(row, 1).toString().trim();
         String soDienThoai = tbl_nhacungCap.getValueAt(row, 2).toString().trim();
         String email = tbl_nhacungCap.getValueAt(row, 3).toString().trim();
         String diaChi = tbl_nhacungCap.getValueAt(row, 4).toString().trim();
 
-        // Kiểm tra nếu có ô nào bị bỏ trống
         if (tenNCC.isEmpty() || soDienThoai.isEmpty() || email.isEmpty() || diaChi.isEmpty()) {
             Notifications.getInstance().show(Notifications.Type.INFO, "Vui lòng nhập đầy đủ thông tin!");
             return;
         }
 
-        // Kiểm tra định dạng email
         if (!email.matches("^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$")) {
             Notifications.getInstance().show(Notifications.Type.INFO, "Email không hợp lệ!");
             return;
         }
 
-        // Kiểm tra số điện thoại chỉ chứa số
         if (!soDienThoai.matches("\\d+")) {
             Notifications.getInstance().show(Notifications.Type.INFO, "Số điện thoại chỉ được chứa chữ số!");
             return;
         }
 
-        // Xác nhận cập nhật
         boolean confirm = Message.confirm("Bạn có chắc chắn muốn cập nhật nhà cung cấp có mã '" + maNCC + "'?");
         if (confirm) {
             try {
-                // Tạo đối tượng Nhà Cung Cấp mới
                 model_NhaCungCap ncc = new model_NhaCungCap();
                 ncc.setManhacungCap(maNCC);
                 ncc.setTennhacungCap(tenNCC);
@@ -130,16 +131,18 @@ public class NhaCungCap_Form extends TabbedForm {
                 ncc.setEmail(email);
                 ncc.setDiaChi(diaChi);
 
-                // Cập nhật vào CSDL
                 nccdao.update(ncc);
-                fillToTableNhaCungCap(); // Cập nhật lại bảng để hiển thị dữ liệu mới
+                fillToTableNhaCungCap();
                 Notifications.getInstance().show(Notifications.Type.SUCCESS, "Cập nhật nhà cung cấp thành công!");
 
-                // 🔔 Ghi nhận thông báo vào hệ thống chuông
-                //themThongBao("Cập nhật", tenNCC);
+                // Ghi vào bảng LICHSUHOATDONG
+                lshdDao.saveThaoTac("Sửa", "Nhà Cung Cấp", "Cập nhật nhà cung cấp: Mã: " + maNCC + ", Tên: " + tenNCC);
             } catch (Exception e) {
                 Message.error("Lỗi: " + e.getMessage());
                 Notifications.getInstance().show(Notifications.Type.INFO, "Cập nhật nhà cung cấp thất bại!");
+
+                // Ghi vào bảng LICHSUHOATDONG khi thất bại
+                lshdDao.saveThaoTac("Sửa thất bại", "Nhà Cung Cấp", "Cập nhật nhà cung cấp thất bại: Mã: " + maNCC + ", Tên: " + tenNCC);
             }
         }
     }

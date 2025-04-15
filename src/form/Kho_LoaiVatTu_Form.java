@@ -21,6 +21,7 @@ import javax.swing.table.TableColumn;
 import javax.swing.table.TableRowSorter;
 import raven.toast.Notifications;
 import tabbed.TabbedForm;
+import dao.LichSuHoatDongDAO;
 
 import tabbed.TabbedForm;
 import util.Message;
@@ -29,6 +30,7 @@ public class Kho_LoaiVatTu_Form extends TabbedForm {
 
     private DefaultTableModel tbl_ModelKhoLoaiVatTu;
     private Kho_LoaiVatTuDAO kltDao = new Kho_LoaiVatTuDAO();
+    private LichSuHoatDongDAO lshdDao = new LichSuHoatDongDAO();
     private KhoDAO khoDao = new KhoDAO();
     private LoaiVatTuDAO loaiVatTuDao = new LoaiVatTuDAO();
     private List<model_KhoLoaiVatTu> list_KhoLoaiVatTu = new ArrayList<>();
@@ -132,29 +134,146 @@ public class Kho_LoaiVatTu_Form extends TabbedForm {
     }
     
 public void deleteKhoLoaiVatTu() {
-    int[] selectedRows = tbl_KhoLoaiVatTu.getSelectedRows();
-    if (selectedRows.length == 0) {
-        Notifications.getInstance().show(Notifications.Type.INFO, "Chọn ít nhất một dòng để xóa!");
-        return;
+        int[] selectedRows = tbl_KhoLoaiVatTu.getSelectedRows();
+        if (selectedRows.length == 0) {
+            Notifications.getInstance().show(Notifications.Type.INFO, "Chọn ít nhất một dòng để xóa!");
+            return;
+        }
+
+        boolean confirm = Message.confirm("Bạn có chắc chắn muốn xóa " + selectedRows.length + " bản ghi?");
+        if (!confirm) {
+            return;
+        }
+
+        boolean hasError = false;
+        List<String> danhSachXoa = new ArrayList<>();
+
+        for (int row : selectedRows) {
+            try {
+                Object maKhoObj = tbl_KhoLoaiVatTu.getValueAt(row, 0);
+                Object maLoaiVatTuObj = tbl_KhoLoaiVatTu.getValueAt(row, 1);
+
+                if (maKhoObj == null || maLoaiVatTuObj == null) {
+                    Notifications.getInstance().show(Notifications.Type.WARNING, 
+                        "Dữ liệu không hợp lệ tại dòng " + (row + 1) + "!");
+                    hasError = true;
+                    continue;
+                }
+
+                String maKho = maKhoObj.toString().trim();
+                String maLoaiVatTu = maLoaiVatTuObj.toString().trim();
+
+                if (maKho.isEmpty() || maLoaiVatTu.isEmpty()) {
+                    Notifications.getInstance().show(Notifications.Type.WARNING, 
+                        "Mã Kho hoặc Mã Loại Vật Tư trống tại dòng " + (row + 1) + "!");
+                    hasError = true;
+                    continue;
+                }
+
+                kltDao.delete(maKho, maLoaiVatTu);
+                danhSachXoa.add(maKho + " - " + maLoaiVatTu);
+            } catch (Exception e) {
+                Notifications.getInstance().show(Notifications.Type.ERROR, 
+                    "Lỗi xóa bản ghi tại dòng " + (row + 1) + ": " + e.getMessage());
+                hasError = true;
+            }
+        }
+
+        fillToTableKhoLoaiVatTu();
+        if (!hasError) {
+            Notifications.getInstance().show(Notifications.Type.SUCCESS, "Xóa bản ghi thành công!");
+
+            // Ghi vào bảng LICHSUHOATDONG
+            lshdDao.saveThaoTac("Xóa", "Kho - Loại Vật Tư", "Xóa " + selectedRows.length + " bản ghi: " + String.join(", ", danhSachXoa));
+        } else {
+            Notifications.getInstance().show(Notifications.Type.WARNING, "Một số bản ghi không thể xóa!");
+
+            // Ghi vào bảng LICHSUHOATDONG khi có lỗi
+            lshdDao.saveThaoTac("Xóa thất bại", "Kho - Loại Vật Tư", "Xóa " + selectedRows.length + " bản ghi thất bại, có lỗi xảy ra");
+        }
     }
 
-    boolean confirm = Message.confirm("Bạn có chắc chắn muốn xóa " + selectedRows.length + " bản ghi?");
-    if (!confirm) {
-        return;
-    }
+    public void updateKhoLoaiVatTu() {
+        int row = tbl_KhoLoaiVatTu.getSelectedRow();
+        if (row < 0) {
+            Notifications.getInstance().show(Notifications.Type.INFO, "Chọn một dòng để cập nhật!");
+            return;
+        }
 
-    boolean hasError = false;
-    for (int row : selectedRows) {
         try {
-            // Lấy giá trị và kiểm tra null
             Object maKhoObj = tbl_KhoLoaiVatTu.getValueAt(row, 0);
             Object maLoaiVatTuObj = tbl_KhoLoaiVatTu.getValueAt(row, 1);
 
             if (maKhoObj == null || maLoaiVatTuObj == null) {
                 Notifications.getInstance().show(Notifications.Type.WARNING, 
                     "Dữ liệu không hợp lệ tại dòng " + (row + 1) + "!");
-                hasError = true;
-                continue;
+                return;
+            }
+
+            String maKho = maKhoObj.toString().trim();
+            String maLoaiVatTu = maLoaiVatTuObj.toString().trim();
+
+            if (maKho.isEmpty() || maLoaiVatTu.isEmpty()) {
+                Notifications.getInstance().show(Notifications.Type.INFO, 
+                    "Vui lòng nhập đầy đủ Mã Kho và Mã Loại Vật Tư!");
+                return;
+            }
+
+            String maKhoBeforeEdit = tbl_KhoLoaiVatTu.getValueAt(row, 0).toString().trim();
+            String maLoaiVatTuBeforeEdit = tbl_KhoLoaiVatTu.getValueAt(row, 1).toString().trim();
+            model_KhoLoaiVatTu originalKLT = kltDao.selectById(maKhoBeforeEdit, maLoaiVatTuBeforeEdit);
+            if (originalKLT == null) {
+                Notifications.getInstance().show(Notifications.Type.WARNING, 
+                    "Bản ghi với Mã Kho '" + maKhoBeforeEdit + "' và Mã Loại Vật Tư '" + maLoaiVatTuBeforeEdit + "' không tồn tại!");
+                return;
+            }
+
+            if (!maKho.equals(originalKLT.getMaKho()) || !maLoaiVatTu.equals(originalKLT.getMaLoaiVatTu())) {
+                if (kltDao.isExist(maKho, maLoaiVatTu)) {
+                    Notifications.getInstance().show(Notifications.Type.WARNING, 
+                        "Bản ghi với Mã Kho '" + maKho + "' và Mã Loại Vật Tư '" + maLoaiVatTu + "' đã tồn tại!");
+                    return;
+                }
+            }
+
+            model_KhoLoaiVatTu klt = new model_KhoLoaiVatTu();
+            klt.setMaKho(maKho);
+            klt.setMaLoaiVatTu(maLoaiVatTu);
+
+            boolean confirm = Message.confirm("Bạn có chắc chắn muốn cập nhật bản ghi với Mã Kho '" + maKho + "'?");
+            if (confirm) {
+                kltDao.update(klt, originalKLT.getMaKho(), originalKLT.getMaLoaiVatTu());
+                fillToTableKhoLoaiVatTu();
+                Notifications.getInstance().show(Notifications.Type.SUCCESS, "Cập nhật bản ghi thành công!");
+
+                // Ghi vào bảng LICHSUHOATDONG
+                lshdDao.saveThaoTac("Sửa", "Kho - Loại Vật Tư", "Cập nhật bản ghi: Mã Kho: " + maKho + ", Mã Loại Vật Tư: " + maLoaiVatTu);
+            }
+        } catch (Exception e) {
+            Notifications.getInstance().show(Notifications.Type.ERROR, "Lỗi cập nhật bản ghi: " + e.getMessage());
+
+            // Ghi vào bảng LICHSUHOATDONG khi thất bại
+            String maKho = tbl_KhoLoaiVatTu.getValueAt(row, 0) != null ? tbl_KhoLoaiVatTu.getValueAt(row, 0).toString() : "N/A";
+            String maLoaiVatTu = tbl_KhoLoaiVatTu.getValueAt(row, 1) != null ? tbl_KhoLoaiVatTu.getValueAt(row, 1).toString() : "N/A";
+            lshdDao.saveThaoTac("Sửa thất bại", "Kho - Loại Vật Tư", "Cập nhật bản ghi thất bại: Mã Kho: " + maKho + ", Mã Loại Vật Tư: " + maLoaiVatTu);
+        }
+    }
+
+    public void viewDetailsKhoLoaiVatTu() {
+        int row = tbl_KhoLoaiVatTu.getSelectedRow();
+        if (row < 0) {
+            Notifications.getInstance().show(Notifications.Type.INFO, "Chọn một dòng để xem chi tiết!");
+            return;
+        }
+
+        try {
+            Object maKhoObj = tbl_KhoLoaiVatTu.getValueAt(row, 0);
+            Object maLoaiVatTuObj = tbl_KhoLoaiVatTu.getValueAt(row, 1);
+
+            if (maKhoObj == null || maLoaiVatTuObj == null) {
+                Notifications.getInstance().show(Notifications.Type.WARNING, 
+                    "Dữ liệu không hợp lệ tại dòng " + (row + 1) + "!");
+                return;
             }
 
             String maKho = maKhoObj.toString().trim();
@@ -163,127 +282,22 @@ public void deleteKhoLoaiVatTu() {
             if (maKho.isEmpty() || maLoaiVatTu.isEmpty()) {
                 Notifications.getInstance().show(Notifications.Type.WARNING, 
                     "Mã Kho hoặc Mã Loại Vật Tư trống tại dòng " + (row + 1) + "!");
-                hasError = true;
-                continue;
-            }
-
-            kltDao.delete(maKho, maLoaiVatTu);
-        } catch (Exception e) {
-            Notifications.getInstance().show(Notifications.Type.ERROR, 
-                "Lỗi xóa bản ghi tại dòng " + (row + 1) + ": " + e.getMessage());
-            hasError = true;
-        }
-    }
-
-    fillToTableKhoLoaiVatTu();
-    if (!hasError) {
-        Notifications.getInstance().show(Notifications.Type.SUCCESS, "Xóa bản ghi thành công!");
-    } else {
-        Notifications.getInstance().show(Notifications.Type.WARNING, "Một số bản ghi không thể xóa!");
-    }
-}
-    
- public void updateKhoLoaiVatTu() {
-    int row = tbl_KhoLoaiVatTu.getSelectedRow();
-    if (row < 0) {
-        Notifications.getInstance().show(Notifications.Type.INFO, "Chọn một dòng để cập nhật!");
-        return;
-    }
-
-    try {
-        // Lấy giá trị từ JTable
-        Object maKhoObj = tbl_KhoLoaiVatTu.getValueAt(row, 0);
-        Object maLoaiVatTuObj = tbl_KhoLoaiVatTu.getValueAt(row, 1);
-
-        if (maKhoObj == null || maLoaiVatTuObj == null) {
-            Notifications.getInstance().show(Notifications.Type.WARNING, 
-                "Dữ liệu không hợp lệ tại dòng " + (row + 1) + "!");
-            return;
-        }
-
-        String maKho = maKhoObj.toString().trim();
-        String maLoaiVatTu = maLoaiVatTuObj.toString().trim();
-
-        if (maKho.isEmpty() || maLoaiVatTu.isEmpty()) {
-            Notifications.getInstance().show(Notifications.Type.INFO, 
-                "Vui lòng nhập đầy đủ Mã Kho và Mã Loại Vật Tư!");
-            return;
-        }
-
-        // Lấy giá trị ban đầu từ cơ sở dữ liệu
-        String maKhoBeforeEdit = tbl_KhoLoaiVatTu.getValueAt(row, 0).toString().trim();
-        String maLoaiVatTuBeforeEdit = tbl_KhoLoaiVatTu.getValueAt(row, 1).toString().trim();
-        model_KhoLoaiVatTu originalKLT = kltDao.selectById(maKhoBeforeEdit, maLoaiVatTuBeforeEdit);
-        if (originalKLT == null) {
-            Notifications.getInstance().show(Notifications.Type.WARNING, 
-                "Bản ghi với Mã Kho '" + maKhoBeforeEdit + "' và Mã Loại Vật Tư '" + maLoaiVatTuBeforeEdit + "' không tồn tại!");
-            return;
-        }
-
-        // Kiểm tra trùng lặp
-        if (!maKho.equals(originalKLT.getMaKho()) || !maLoaiVatTu.equals(originalKLT.getMaLoaiVatTu())) {
-            if (kltDao.isExist(maKho, maLoaiVatTu)) {
-                Notifications.getInstance().show(Notifications.Type.WARNING, 
-                    "Bản ghi với Mã Kho '" + maKho + "' và Mã Loại Vật Tư '" + maLoaiVatTu + "' đã tồn tại!");
                 return;
             }
-        }
 
-        // Cập nhật bản ghi
-        model_KhoLoaiVatTu klt = new model_KhoLoaiVatTu();
-        klt.setMaKho(maKho);
-        klt.setMaLoaiVatTu(maLoaiVatTu);
-
-        boolean confirm = Message.confirm("Bạn có chắc chắn muốn cập nhật bản ghi với Mã Kho '" + maKho + "'?");
-        if (confirm) {
-            kltDao.update(klt, originalKLT.getMaKho(), originalKLT.getMaLoaiVatTu());
-            fillToTableKhoLoaiVatTu();
-            Notifications.getInstance().show(Notifications.Type.SUCCESS, "Cập nhật bản ghi thành công!");
+            model_KhoLoaiVatTu klt = kltDao.selectById(maKho, maLoaiVatTu);
+            if (klt != null) {
+                XemChiTiet_K_LVT detailPanel = new XemChiTiet_K_LVT(this);
+                detailPanel.setDetails(maKho, maLoaiVatTu);
+                jScrollPane1.setViewportView(detailPanel);
+            } else {
+                Notifications.getInstance().show(Notifications.Type.WARNING, 
+                    "Không tìm thấy bản ghi với Mã Kho '" + maKho + "' và Mã Loại Vật Tư '" + maLoaiVatTu + "'!");
+            }
+        } catch (Exception e) {
+            Notifications.getInstance().show(Notifications.Type.ERROR, "Lỗi xem chi tiết: " + e.getMessage());
         }
-    } catch (Exception e) {
-        Notifications.getInstance().show(Notifications.Type.ERROR, "Lỗi cập nhật bản ghi: " + e.getMessage());
     }
-}
-    
-public void viewDetailsKhoLoaiVatTu() {
-    int row = tbl_KhoLoaiVatTu.getSelectedRow();
-    if (row < 0) {
-        Notifications.getInstance().show(Notifications.Type.INFO, "Chọn một dòng để xem chi tiết!");
-        return;
-    }
-
-    try {
-        Object maKhoObj = tbl_KhoLoaiVatTu.getValueAt(row, 0);
-        Object maLoaiVatTuObj = tbl_KhoLoaiVatTu.getValueAt(row, 1);
-
-        if (maKhoObj == null || maLoaiVatTuObj == null) {
-            Notifications.getInstance().show(Notifications.Type.WARNING, 
-                "Dữ liệu không hợp lệ tại dòng " + (row + 1) + "!");
-            return;
-        }
-
-        String maKho = maKhoObj.toString().trim();
-        String maLoaiVatTu = maLoaiVatTuObj.toString().trim();
-
-        if (maKho.isEmpty() || maLoaiVatTu.isEmpty()) {
-            Notifications.getInstance().show(Notifications.Type.WARNING, 
-                "Mã Kho hoặc Mã Loại Vật Tư trống tại dòng " + (row + 1) + "!");
-            return;
-        }
-
-        model_KhoLoaiVatTu klt = kltDao.selectById(maKho, maLoaiVatTu);
-        if (klt != null) {
-            XemChiTiet_K_LVT detailPanel = new XemChiTiet_K_LVT(this);
-            detailPanel.setDetails(maKho, maLoaiVatTu);
-            jScrollPane1.setViewportView(detailPanel);
-        } else {
-            Notifications.getInstance().show(Notifications.Type.WARNING, 
-                "Không tìm thấy bản ghi với Mã Kho '" + maKho + "' và Mã Loại Vật Tư '" + maLoaiVatTu + "'!");
-        }
-    } catch (Exception e) {
-        Notifications.getInstance().show(Notifications.Type.ERROR, "Lỗi xem chi tiết: " + e.getMessage());
-    }
-}
 
     // Phương thức này được gọi khi nhấn "Quay Lại" từ XemChiTiet_K_LVT
     public void showTable() {

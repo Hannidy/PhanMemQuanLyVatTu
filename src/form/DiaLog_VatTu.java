@@ -3,6 +3,7 @@ package form;
 import com.formdev.flatlaf.FlatLaf;
 import com.formdev.flatlaf.fonts.roboto.FlatRobotoFont;
 import com.formdev.flatlaf.themes.FlatMacDarkLaf;
+import dao.LichSuHoatDongDAO;
 import dao.VatTuDAO;
 import entity.model_VatTu;
 import java.awt.Color;
@@ -31,6 +32,7 @@ public class DiaLog_VatTu extends javax.swing.JDialog {
 
     private DefaultTableModel tbl_ModelVatTu;
     private VatTuDAO vtdao = new VatTuDAO();
+    private LichSuHoatDongDAO lshdDao = new LichSuHoatDongDAO();
     private List<model_VatTu> list_VatTu = new ArrayList<model_VatTu>();
     private VatTu_Form pnVatTuRef;
     private static final String LOG_FILE = "vattu_log.txt";
@@ -125,24 +127,23 @@ public class DiaLog_VatTu extends javax.swing.JDialog {
         vt.setMaloaivatTu((String) cbo_maloaivatTu.getSelectedItem());
 
         try {
-            // Sinh mã vật tư trước khi insert
             String maVT = vtdao.selectMaxId();
-            vt.setMavatTu(maVT); // Gán mã vào vt
-            vtdao.insert(vt); // Thêm vào CSDL
+            vt.setMavatTu(maVT);
+            vtdao.insert(vt);
 
             Notifications.getInstance().show(Notifications.Type.SUCCESS, "Thêm vật tư thành công!");
 
-            // Ghi log
+            // Ghi vào bảng LICHSUHOATDONG
+            lshdDao.saveThaoTac("Thêm", "Vật Tư", "Thêm vật tư mới với mã " + maVT);
+
+            // Ghi log vào file (phần cũ của bạn)
             String log = String.format("Thêm|%s|%s|%s|%s",
-                    maVT,
-                    tenVatTu,
-                    vt.getMaloaivatTu(),
+                    maVT, tenVatTu, vt.getMaloaivatTu(),
                     new SimpleDateFormat("HH:mm:ss dd/MM/yyyy").format(new Date()));
             writeLogToFile(log);
 
             if (pnVatTuRef != null) {
                 pnVatTuRef.fillToTableVatTu();
-               
             }
 
             new Timer(700, e -> dispose()).start();
@@ -151,13 +152,9 @@ public class DiaLog_VatTu extends javax.swing.JDialog {
             Notifications.getInstance().show(Notifications.Type.INFO, "Thêm vật tư thất bại!");
             String log = String.format("Thêm thất bại|%s|%s|%s|%s",
                     vt.getMavatTu() != null ? vt.getMavatTu() : "N/A",
-                    tenVatTu,
-                    vt.getMaloaivatTu(),
+                    tenVatTu, vt.getMaloaivatTu(),
                     new SimpleDateFormat("HH:mm:ss dd/MM/yyyy").format(new Date()));
             writeLogToFile(log);
-            if (pnVatTuRef != null) {
-               
-            }
         }
     }
     

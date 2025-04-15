@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import dao.LichSuHoatDongDAO;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -35,6 +36,7 @@ public class PhongBan_Form extends TabbedForm {
     public DefaultTableModel tbl_ModelPhongBan;
     public PhongBanDAO pbdao = new PhongBanDAO();
     public List<model_PhongBan> list_PB = new ArrayList<model_PhongBan>();
+    private LichSuHoatDongDAO lshdDao = new LichSuHoatDongDAO();
 
     private String selectedTenPhongBan = "";
     private String selectedDiaChi = "";
@@ -90,19 +92,12 @@ public class PhongBan_Form extends TabbedForm {
     }
 
     public void deletePhongBan() {
-        int rows = tbl_phongBan.getSelectedRow();
-        int[] selectedRows = tbl_phongBan.getSelectedRows(); // Lấy tất cả các dòng được chọn
+        int[] selectedRows = tbl_phongBan.getSelectedRows();
 
         if (selectedRows.length == 0) {
             Notifications.getInstance().show(Notifications.Type.INFO, "Chọn ít nhất một dòng để xóa!");
             return;
         }
-
-        // Lấy dữ liệu từ JTable với 4 cột
-        String maPhongBan = tbl_phongBan.getValueAt(rows, 0).toString();
-        String tenPhongBan = tbl_phongBan.getValueAt(rows, 1).toString().trim();
-        String diaChi = tbl_phongBan.getValueAt(rows, 2).toString().trim();
-        String matruongPhong = tbl_phongBan.getValueAt(rows, 3).toString().trim();
 
         boolean confirm = Message.confirm("Bạn có chắc chắn muốn xóa " + selectedRows.length + " phòng ban?");
         if (!confirm) {
@@ -110,26 +105,25 @@ public class PhongBan_Form extends TabbedForm {
         }
 
         try {
-            List<String> danhSachXoa = new ArrayList<>(); // Lưu các vật tư bị xóa để ghi vào thông báo
+            List<String> danhSachXoa = new ArrayList<>();
 
-            for (int i = selectedRows.length - 1; i >= 0; i--) { // Xóa từ dưới lên để tránh lỗi chỉ số
+            for (int i = selectedRows.length - 1; i >= 0; i--) {
                 int row = selectedRows[i];
-                pbdao.delete(maPhongBan); // Xóa từng vật tư
-                danhSachXoa.add(maPhongBan); // Thêm vào danh sách để ghi nhận thông báo
+                String maPhongBan = tbl_phongBan.getValueAt(row, 0).toString();
+                pbdao.delete(maPhongBan);
+                danhSachXoa.add(maPhongBan);
             }
 
-            fillToTablePhongBan(); // Cập nhật lại bảng sau khi xóa
+            fillToTablePhongBan();
             Notifications.getInstance().show(Notifications.Type.SUCCESS, "Đã xóa " + selectedRows.length + " phòng ban!");
 
-            String log = String.format("Xóa|%s|%s|%s|%s|%s",
-                    maPhongBan, tenPhongBan, diaChi, matruongPhong,
-                    new SimpleDateFormat("HH:mm:ss dd/MM/yyyy").format(new Date()));
-            writeLogToFile(log);
-            notificationCount++; // Tăng số thông báo
-            updateBellIcon(); // Cập nhật giao diện chuông
+            // Ghi vào bảng LICHSUHOATDONG
+            lshdDao.saveThaoTac("Xóa", "Phòng Ban", "Xóa " + selectedRows.length + " phòng ban, mã: " + String.join(", ", danhSachXoa));
 
         } catch (Exception e) {
-            Notifications.getInstance().show(Notifications.Type.INFO, "Không thể xóa phòng ban!");
+            Notifications.getInstance().show(Notifications.Type.INFO, "Không thể xóa phòng ban: " + e.getMessage());
+            // Ghi vào bảng LICHSUHOATDONG khi thất bại
+            lshdDao.saveThaoTac("Xóa thất bại", "Phòng Ban", "Không thể xóa phòng ban: " + e.getMessage());
         }
     }
 
@@ -140,56 +134,43 @@ public class PhongBan_Form extends TabbedForm {
             return;
         }
 
-        // Lấy dữ liệu từ JTable với 4 cột
         String maPhongBan = tbl_phongBan.getValueAt(row, 0).toString();
         String tenPhongBan = tbl_phongBan.getValueAt(row, 1).toString().trim();
         String diaChi = tbl_phongBan.getValueAt(row, 2).toString().trim();
         String matruongPhong = tbl_phongBan.getValueAt(row, 3).toString().trim();
 
-        // Kiểm tra nếu có ô nào bị bỏ trống
         if (tenPhongBan.isEmpty() || diaChi.isEmpty() || matruongPhong.isEmpty()) {
             Notifications.getInstance().show(Notifications.Type.INFO, "Vui lòng nhập đầy đủ thông tin!");
             return;
         }
 
-        // Tạo đối tượng Phòng Ban mới
         model_PhongBan pb = new model_PhongBan();
         pb.setMaphongBan(maPhongBan);
         pb.setTenphongBan(tenPhongBan);
         pb.setDiaChi(diaChi);
         pb.setMatruongPhong(matruongPhong);
 
-        // Xác nhận cập nhật
         boolean confirm = Message.confirm("Bạn có chắc chắn muốn cập nhật phòng ban có mã '" + maPhongBan + "'?");
         if (confirm) {
             try {
-                pbdao.update(pb); // Cập nhật vào CSDL
-                fillToTablePhongBan(); // Cập nhật lại bảng để hiển thị dữ liệu mới
+                pbdao.update(pb);
+                fillToTablePhongBan();
                 Notifications.getInstance().show(Notifications.Type.SUCCESS, "Cập nhật phòng ban thành công!");
 
-                // Ghi log (đồng bộ với updateVatTu)
-                String log = String.format("Cập nhật|%s|%s|%s|%s|%s",
-                        maPhongBan, tenPhongBan, diaChi, matruongPhong, // Dùng matruongPhong thay cho maLoaiVT
-                        new SimpleDateFormat("HH:mm:ss dd/MM/yyyy").format(new Date()));
-                writeLogToFile(log);
-                notificationCount++; // Tăng số thông báo
-                updateBellIcon(); // Cập nhật giao diện chuông
+                // Ghi vào bảng LICHSUHOATDONG
+                lshdDao.saveThaoTac("Sửa", "Phòng Ban", "Sửa thông tin phòng ban với mã " + maPhongBan);
 
             } catch (Exception e) {
                 Message.error("Lỗi: " + e.getMessage());
                 Notifications.getInstance().show(Notifications.Type.INFO, "Cập nhật phòng ban thất bại!");
 
-                // Ghi log khi thất bại (thêm để đồng bộ với các hàm khác)
-                String log = String.format("Cập nhật thất bại|%s|%s|%s|%s|%s",
-                        maPhongBan, tenPhongBan, diaChi, matruongPhong,
-                        new SimpleDateFormat("HH:mm:ss dd/MM/yyyy").format(new Date()));
-                writeLogToFile(log);
-                notificationCount++; // Tăng số thông báo
-                updateBellIcon(); // Cập nhật giao diện chuông
+                // Ghi vào bảng LICHSUHOATDONG khi thất bại
+                lshdDao.saveThaoTac("Sửa thất bại", "Phòng Ban", "Cập nhật phòng ban thất bại: " + maPhongBan);
             }
         }
     }
-
+    
+    
     private void addBellButtonAction() {
         for (ActionListener al : btn_bell.getActionListeners()) {
             btn_bell.removeActionListener(al);

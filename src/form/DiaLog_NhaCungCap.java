@@ -1,13 +1,11 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JDialog.java to edit this template
- */
+
 package form;
 
 import com.formdev.flatlaf.FlatLaf;
 import com.formdev.flatlaf.fonts.roboto.FlatRobotoFont;
 import com.formdev.flatlaf.themes.FlatMacDarkLaf;
 import dao.NhaCungCapDAO;
+import dao.LichSuHoatDongDAO;
 import entity.model_NhaCungCap;
 import java.awt.Color;
 import java.awt.Font;
@@ -25,15 +23,13 @@ import javax.swing.UIManager;
 import javax.swing.table.DefaultTableModel;
 import raven.toast.Notifications;
 
-/**
- *
- * @author RubyNgoc
- */
+
 public class DiaLog_NhaCungCap extends javax.swing.JDialog {
 
     private DefaultTableModel tbl_ModelNhaCungCap;
     private NhaCungCapDAO nccdao = new NhaCungCapDAO();
     private List<model_NhaCungCap> list_NhaCungCap = new ArrayList<model_NhaCungCap>();
+    private LichSuHoatDongDAO lshdDao = new LichSuHoatDongDAO();
     private NhaCungCap_Form pnNCCRef;
 
     private String emailRegex = "^[a-zA-Z0-9_+&*-]+(?:\\.[a-zA-Z0-9_+&*-]+)*@(?:[a-zA-Z0-9-]+\\.)+[a-zA-Z]{2,7}$";
@@ -98,15 +94,13 @@ public class DiaLog_NhaCungCap extends javax.swing.JDialog {
     private void addNhaCungCap() {
         boolean isValid = true;
         boolean hasError = false;
-        boolean hasSpecificError = false; // Biến để theo dõi lỗi cụ thể
+        boolean hasSpecificError = false;
 
-        // Reset viền trước khi kiểm tra
         resetBorder(txt_tennhacungCap);
         resetBorder(txt_sodienThoai);
         resetBorder(txt_email);
         resetBorder(txt_diaChi);
 
-        // Kiểm tra từng field
         String tenNCC = txt_tennhacungCap.getText().trim();
         if (tenNCC.isEmpty()) {
             setErrorBorder(txt_tennhacungCap);
@@ -117,7 +111,7 @@ public class DiaLog_NhaCungCap extends javax.swing.JDialog {
         if (SDT.isEmpty()) {
             setErrorBorder(txt_sodienThoai);
             isValid = false;
-        } else if (!SDT.matches("0\\d{9}")) { // Kiểm tra số điện thoại bắt đầu bằng 0 và có 10 chữ số
+        } else if (!SDT.matches("0\\d{9}")) {
             setErrorBorder(txt_sodienThoai);
             Notifications.getInstance().show(Notifications.Type.INFO, "Số điện thoại phải bắt đầu bằng 0 và có đúng 10 chữ số!");
             isValid = false;
@@ -141,40 +135,35 @@ public class DiaLog_NhaCungCap extends javax.swing.JDialog {
             isValid = false;
         }
 
-        // Nếu có lỗi và không có lỗi cụ thể, hiển thị thông báo tổng quát
         if (!isValid && !hasSpecificError) {
             Notifications.getInstance().show(Notifications.Type.INFO, "Vui lòng nhập đầy đủ thông tin!");
             return;
         } else if (!isValid) {
-            return; // Có lỗi cụ thể, không hiển thị thêm thông báo
+            return;
         }
 
-        // 🔎 Kiểm tra tên nhà cung cấp
         if (nccdao.isEmailNhaCungCapExist(tenNCC)) {
             Notifications.getInstance().show(Notifications.Type.INFO, "Tên nhà cung cấp đã tồn tại!");
             setErrorBorder(txt_tennhacungCap);
             hasError = true;
         }
 
-        // 🔎 Kiểm tra email
         if (nccdao.isEmailNhaCungCapExist(email)) {
             Notifications.getInstance().show(Notifications.Type.INFO, "Email đã tồn tại!");
             setErrorBorder(txt_email);
             hasError = true;
         }
 
-        // 🔎 Kiểm tra SDT
         if (nccdao.isSDTNhaCungCapExist(SDT)) {
             Notifications.getInstance().show(Notifications.Type.INFO, "Số điện thoại đã tồn tại!");
             setErrorBorder(txt_sodienThoai);
             hasError = true;
         }
 
-        // Nếu có bất kỳ lỗi nào thì dừng lại
         if (hasError) {
             return;
         }
-        // Nếu hợp lệ, tiếp tục thêm nhà cung cấp
+
         model_NhaCungCap ncc = new model_NhaCungCap();
         ncc.setTennhacungCap(tenNCC);
         ncc.setSodienThoai(SDT);
@@ -182,45 +171,28 @@ public class DiaLog_NhaCungCap extends javax.swing.JDialog {
         ncc.setDiaChi(diachi);
 
         try {
-            // Sinh mã nhà cung cấp trước khi insert (nếu cần)
-            String maNCC = nccdao.selectMaxId(); // Giả định nccdao có hàm selectMaxId() tương tự
-            ncc.setManhacungCap(maNCC); // Gán mã vào ncc
-            nccdao.insert(ncc); // Thêm vào CSDL
+            String maNCC = nccdao.selectMaxId();
+            ncc.setManhacungCap(maNCC);
+            nccdao.insert(ncc);
 
             Notifications.getInstance().show(Notifications.Type.SUCCESS, "Thêm nhà cung cấp thành công!");
 
-            // Ghi log (đồng bộ với addVatTu)
-            String log = String.format("Thêm|%s|%s|%s|%s|%s|%s",
-                    maNCC,
-                    tenNCC,
-                    SDT,
-                    email,
-                    diachi, // Thay cho maLoaiVatTu, vì không có trường tương ứng
-                    new SimpleDateFormat("HH:mm:ss dd/MM/yyyy").format(new Date()));
-            writeLogToFile(log);
+            // Ghi vào bảng LICHSUHOATDONG
+            lshdDao.saveThaoTac("Thêm", "Nhà Cung Cấp", "Thêm nhà cung cấp: Mã: " + maNCC + ", Tên: " + tenNCC);
 
-            // Cập nhật bảng
             if (pnNCCRef != null) {
                 pnNCCRef.fillToTableNhaCungCap();
-
             }
 
-            // Đợi thông báo hiển thị xong rồi đóng form (đồng bộ thời gian với addVatTu)
             new Timer(700, e -> dispose()).start();
-
         } catch (Exception e) {
             Notifications.getInstance().show(Notifications.Type.INFO, "Thêm nhà cung cấp thất bại!");
-            String log = String.format("Thêm thất bại|%s|%s|%s|%s|%s|%s",
-                    ncc.getManhacungCap() != null ? ncc.getManhacungCap() : "N/A",
-                    tenNCC,
-                    SDT,
-                    email,
-                    diachi,
-                    new SimpleDateFormat("HH:mm:ss dd/MM/yyyy").format(new Date()));
-            writeLogToFile(log);
+
+            // Ghi vào bảng LICHSUHOATDONG khi thất bại
+            lshdDao.saveThaoTac("Thêm thất bại", "Nhà Cung Cấp", "Thêm nhà cung cấp thất bại: Tên: " + tenNCC);
+
             if (pnNCCRef != null) {
                 pnNCCRef.fillToTableNhaCungCap();
-
             }
         }
     }

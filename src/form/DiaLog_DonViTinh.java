@@ -10,6 +10,7 @@ import com.formdev.flatlaf.themes.FlatMacDarkLaf;
 import dao.DonViTinhDAO;
 import entity.model_DonViTinh;
 import entity.model_VatTu;
+import dao.LichSuHoatDongDAO;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.Frame;
@@ -32,6 +33,7 @@ public class DiaLog_DonViTinh extends javax.swing.JDialog {
     private List<model_DonViTinh> list_DonViTinh = new ArrayList<model_DonViTinh>();
     private DonViTinh_Form parentPanel;
     private final Set<String> dsNhomVatTu;
+    private LichSuHoatDongDAO lshdDao = new LichSuHoatDongDAO();
   
 
 
@@ -86,55 +88,61 @@ public class DiaLog_DonViTinh extends javax.swing.JDialog {
     this.txt_TenDonVi.setText("");
     this.cbo_NhomVatTu.setSelectedIndex(0);
 }
-    public void addDonViTinh() {
-    boolean isValid = true;
+   public void addDonViTinh() {
+        boolean isValid = true;
 
-    // Reset viền trước khi kiểm tra
-    resetBorder(txt_TenDonVi);
+        // Reset viền trước khi kiểm tra
+        resetBorder(txt_TenDonVi);
 
-    // Kiểm tra tên đơn vị
-    String tenDonVi = txt_TenDonVi.getText().trim();
-    if (tenDonVi.isEmpty()) {
-        setErrorBorder(txt_TenDonVi);
-        isValid = false;
-    }
-
-    // Nếu có lỗi nhập liệu, hiển thị thông báo và dừng lại
-    if (!isValid) {
-        Notifications.getInstance().show(Notifications.Type.INFO, "Vui lòng nhập đủ thông tin!");
-        return;
-    }
-
-    // 🔎 Kiểm tra tên đã tồn tại chưa
-    if (dvtDAO.isTenDonViExist(tenDonVi)) {
-        Notifications.getInstance().show(Notifications.Type.INFO, "Tên đơn vị đã tồn tại!");
-        setErrorBorder(txt_TenDonVi);
-        return;
-    }
-
-    // Nếu hợp lệ, tiếp tục thêm đơn vị
-    model_DonViTinh dvt = new model_DonViTinh();
-    dvt.setTenDonVi(tenDonVi);
-    dvt.setNhomVatTu((String) cbo_NhomVatTu.getSelectedItem());
-
-    try {
-        dvtDAO.insert(dvt);
-        Notifications.getInstance().show(Notifications.Type.SUCCESS, "✅ Thêm đơn vị tính thành công!");
-
-        // 🔔 Cập nhật bảng trong form chính
-        if (parentPanel != null) {
-            parentPanel.fillToTableDonViTinh();
-            // Nếu có notification thêm thì gọi thêm ở đây
+        // Kiểm tra tên đơn vị
+        String tenDonVi = txt_TenDonVi.getText().trim();
+        if (tenDonVi.isEmpty()) {
+            setErrorBorder(txt_TenDonVi);
+            isValid = false;
         }
 
-        // Đợi thông báo hiển thị xong rồi đóng
-        new Timer(700, e -> dispose()).start();
+        // Nếu có lỗi nhập liệu, hiển thị thông báo và dừng lại
+        if (!isValid) {
+            Notifications.getInstance().show(Notifications.Type.INFO, "Vui lòng nhập đủ thông tin!");
+            return;
+        }
 
-    } catch (Exception e) {
-        Notifications.getInstance().show(Notifications.Type.ERROR, "❌ Lỗi: " + e.getMessage());
-        Notifications.getInstance().show(Notifications.Type.INFO, "❌ Thêm đơn vị tính thất bại!");
+        // 🔎 Kiểm tra tên đã tồn tại chưa
+        if (dvtDAO.isTenDonViExist(tenDonVi)) {
+            Notifications.getInstance().show(Notifications.Type.INFO, "Tên đơn vị đã tồn tại!");
+            setErrorBorder(txt_TenDonVi);
+            return;
+        }
+
+        // Nếu hợp lệ, tiếp tục thêm đơn vị
+        model_DonViTinh dvt = new model_DonViTinh();
+        dvt.setTenDonVi(tenDonVi);
+        dvt.setNhomVatTu((String) cbo_NhomVatTu.getSelectedItem());
+
+        try {
+            dvtDAO.insert(dvt);
+            Notifications.getInstance().show(Notifications.Type.SUCCESS, "✅ Thêm đơn vị tính thành công!");
+
+            // Ghi vào bảng LICHSUHOATDONG
+            lshdDao.saveThaoTac("Thêm", "Đơn Vị Tính", "Thêm đơn vị tính: Tên: " + tenDonVi + ", Nhóm: " + cbo_NhomVatTu.getSelectedItem());
+
+            // 🔔 Cập nhật bảng trong form chính
+            if (parentPanel != null) {
+                parentPanel.fillToTableDonViTinh();
+                // Nếu có notification thêm thì gọi thêm ở đây
+            }
+
+            // Đợi thông báo hiển thị xong rồi đóng
+            new Timer(700, e -> dispose()).start();
+
+        } catch (Exception e) {
+            Notifications.getInstance().show(Notifications.Type.ERROR, "❌ Lỗi: " + e.getMessage());
+            Notifications.getInstance().show(Notifications.Type.INFO, "❌ Thêm đơn vị tính thất bại!");
+
+            // Ghi vào bảng LICHSUHOATDONG khi thất bại
+            lshdDao.saveThaoTac("Thêm thất bại", "Đơn Vị Tính", "Thêm đơn vị tính thất bại: Tên: " + tenDonVi + ", Nhóm: " + cbo_NhomVatTu.getSelectedItem());
+        }
     }
-}
     // Đặt viền đỏ cho JTextField khi có lỗi
     private void setErrorBorder(JTextField field) {
         field.setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, Color.RED)); // Gạch đỏ dưới

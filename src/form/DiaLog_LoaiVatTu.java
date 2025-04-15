@@ -20,6 +20,7 @@ import javax.swing.Timer;
 import javax.swing.UIManager;
 import javax.swing.table.DefaultTableModel;
 import raven.toast.Notifications;
+import dao.LichSuHoatDongDAO;
 /**
  *
  * @author RubyNgoc
@@ -30,6 +31,7 @@ public class DiaLog_LoaiVatTu extends javax.swing.JDialog {
     private LoaiVatTuDAO lvtdao = new LoaiVatTuDAO();
     private List<model_LoaiVatTu> list_LoaiVatTu = new ArrayList<model_LoaiVatTu>();
     private LoaiVatTu_Form pnloaiVatTuRef;
+    private LichSuHoatDongDAO lshdDao = new LichSuHoatDongDAO();
     /**
      * Creates new form DiaLog_LoaiVatTu
      */
@@ -71,47 +73,44 @@ public class DiaLog_LoaiVatTu extends javax.swing.JDialog {
         }
     }
      
-     public void addLoaiVatTu() {
+    public void addLoaiVatTu() {
         boolean isValid = true;
 
-        // Reset viền trước khi kiểm tra
         resetBorder(txt_tenloaivatTu);
 
-        // Kiểm tra từng field
         String tenLoaiVatTu = txt_tenloaivatTu.getText().trim();
         if (tenLoaiVatTu.isEmpty()) {
             setErrorBorder(txt_tenloaivatTu);
             isValid = false;
         }
 
-        // Nếu có lỗi nhập liệu, hiển thị thông báo và dừng lại
         if (!isValid) {
             Notifications.getInstance().show(Notifications.Type.INFO, "Vui lòng nhập đủ thông tin!");
             return;
         }
 
-        // 🔎 Kiểm tra tên đã tồn tại chưa
         if (lvtdao.isTenLoaiVatTuExist(tenLoaiVatTu)) {
             Notifications.getInstance().show(Notifications.Type.INFO, "Tên loại vật tư đã tồn tại!");
             setErrorBorder(txt_tenloaivatTu);
             return;
         }
 
-        // Nếu hợp lệ, tiếp tục thêm vật tư
         model_LoaiVatTu lvt = new model_LoaiVatTu();
         lvt.setTenloaivatTu(txt_tenloaivatTu.getText().trim());
 
         try {
+            String maLVT = lvtdao.selectMaxId(); // Lấy mã loại vật tư mới nhất
+            lvt.setMaloaivatTu(maLVT); // Gán mã vào đối tượng
             lvtdao.insert(lvt);
             Notifications.getInstance().show(Notifications.Type.SUCCESS, "Thêm loại vật tư thành công!");
 
-            // 🔔 Cập nhật bảng trong pnVatTu
+            // Ghi vào bảng LICHSUHOATDONG
+            lshdDao.saveThaoTac("Thêm", "Loại Vật Tư", "Thêm loại vật tư mới với mã " + maLVT);
+
             if (pnloaiVatTuRef != null) {
                 pnloaiVatTuRef.fillToTableLoaiVatTu();
-                //pnLVTRef.themThongBao("Thêm", lvt.getTenLoaiVatTu()); // Cập nhật thông báo
             }
 
-            // Đợi thông báo hiển thị xong rồi mới đóng form
             new Timer(700, e -> dispose()).start();
 
         } catch (Exception e) {

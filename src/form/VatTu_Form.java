@@ -30,11 +30,13 @@ import javax.swing.table.TableRowSorter;
 import tabbed.TabbedForm;
 import util.Message;
 import raven.toast.Notifications;
+import dao.LichSuHoatDongDAO;
 
 public class VatTu_Form extends TabbedForm {
 
     public DefaultTableModel tbl_ModelVatTu;
     private VatTuDAO vtdao = new VatTuDAO();
+    private LichSuHoatDongDAO lshdDao = new LichSuHoatDongDAO();
     private List<model_VatTu> list_VatTu = new ArrayList<model_VatTu>();
 
     private String selectedTenVT = "";  // Biến để lấy dữ liệu dòng
@@ -93,7 +95,7 @@ public class VatTu_Form extends TabbedForm {
 
     public void deleteVatTu() {
         int rows = tbl_vatTu.getSelectedRow();
-        int[] selectedRows = tbl_vatTu.getSelectedRows(); // Lấy tất cả các dòng được chọn
+        int[] selectedRows = tbl_vatTu.getSelectedRows();
 
         if (selectedRows.length == 0) {
             Notifications.getInstance().show(Notifications.Type.INFO, "Chọn ít nhất một dòng để xóa!");
@@ -110,31 +112,33 @@ public class VatTu_Form extends TabbedForm {
         }
 
         try {
-            List<String> danhSachXoa = new ArrayList<>(); // Lưu các vật tư bị xóa để ghi vào thông báo
+            List<String> danhSachXoa = new ArrayList<>();
 
-            for (int i = selectedRows.length - 1; i >= 0; i--) { // Xóa từ dưới lên để tránh lỗi chỉ số
+            for (int i = selectedRows.length - 1; i >= 0; i--) {
                 int row = selectedRows[i];
                 String maVatTu = tbl_vatTu.getValueAt(row, 0).toString();
-                vtdao.delete(maVatTu); // Xóa từng vật tư
-                danhSachXoa.add(maVatTu); // Thêm vào danh sách để ghi nhận thông báo
+                vtdao.delete(maVatTu);
+                danhSachXoa.add(maVatTu);
             }
 
-            fillToTableVatTu(); // Cập nhật lại bảng sau khi xóa
+            fillToTableVatTu();
             Notifications.getInstance().show(Notifications.Type.SUCCESS, "Đã xóa " + selectedRows.length + " vật tư!");
+
+            // Ghi vào bảng LICHSUHOATDONG
+            lshdDao.saveThaoTac("Xóa", "Vật Tư", "Xóa " + selectedRows.length + " vật tư, mã: " + String.join(", ", danhSachXoa));
 
             String log = String.format("Xóa|%s|%s|%s|%s",
                     maVT, tenVT, maLoaiVT,
                     new SimpleDateFormat("HH:mm:ss dd/MM/yyyy").format(new Date()));
             writeLogToFile(log);
-            notificationCount++; // Tăng số thông báo
-            updateBellIcon(); // Cập nhật giao diện chuông
+            notificationCount++;
+            updateBellIcon();
 
         } catch (Exception e) {
             Notifications.getInstance().show(Notifications.Type.INFO, "Không thể xóa vật tư!");
         }
     }
 
-    // Cập nhật vật tư
     public void updateVatTu() {
         int row = tbl_vatTu.getSelectedRow();
         if (row < 0) {
@@ -142,38 +146,36 @@ public class VatTu_Form extends TabbedForm {
             return;
         }
 
-        // Lấy dữ liệu từ JTable chỉ với 3 cột
         String maVT = tbl_vatTu.getValueAt(row, 0).toString();
         String tenVT = tbl_vatTu.getValueAt(row, 1).toString().trim();
         String maLoaiVT = tbl_vatTu.getValueAt(row, 2).toString().trim();
 
-        // Kiểm tra nếu có ô nào bị bỏ trống
         if (tenVT.isEmpty() || maLoaiVT.isEmpty()) {
             Notifications.getInstance().show(Notifications.Type.INFO, "Vui lòng nhập đầy đủ thông tin!");
             return;
         }
 
-        // Tạo đối tượng Vật Tư mới
         model_VatTu vt = new model_VatTu();
         vt.setMavatTu(maVT);
         vt.setTenVatTu(tenVT);
         vt.setMaloaivatTu(maLoaiVT);
 
-        // Xác nhận cập nhật
         boolean confirm = Message.confirm("Bạn có chắc chắn muốn cập nhật vật tư có mã '" + maVT + "'?");
         if (confirm) {
             try {
-                vtdao.update(vt); // Cập nhật vào CSDL
-                fillToTableVatTu(); // Cập nhật lại bảng để hiển thị dữ liệu mới
+                vtdao.update(vt);
+                fillToTableVatTu();
                 Notifications.getInstance().show(Notifications.Type.SUCCESS, "Cập nhật vật tư thành công!");
 
-                // 🔔 Ghi log vào file
+                // Ghi vào bảng LICHSUHOATDONG
+                lshdDao.saveThaoTac("Sửa", "Vật Tư", "Sửa thông tin vật tư với mã " + maVT);
+
                 String log = String.format("Cập nhật|%s|%s|%s|%s",
                         maVT, tenVT, maLoaiVT,
                         new SimpleDateFormat("HH:mm:ss dd/MM/yyyy").format(new Date()));
                 writeLogToFile(log);
-                notificationCount++; // Tăng số thông báo
-                updateBellIcon(); // Cập nhật giao diện chuông
+                notificationCount++;
+                updateBellIcon();
 
             } catch (Exception e) {
                 Message.error("Lỗi: " + e.getMessage());

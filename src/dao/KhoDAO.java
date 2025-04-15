@@ -34,27 +34,23 @@ public class KhoDAO {
         JDBCHelper.update(sql, maKHO);
     }
 
-    public String selectMaxId() {
-        String sql = "SELECT MAX(CAST(SUBSTRING(MaKho, 2, LEN(MaKho)-1) AS INT)) FROM KHO";
-        String newMaKho = "K01";// Mặc định nếu bảng rỗng.
-        try {
-            ResultSet rs = JDBCHelper.query(sql);
-            if (rs == null) {
-                System.out.println("⚠ Không thể lấy dữ liệu: ResultSet trả về null.");
-                return newMaKho;
-            }
-            if (rs.next() && rs.getObject(1) != null) {
-                int maxMaKho = rs.getInt(1);
-                newMaKho = "K" + (maxMaKho + 1); // Tạo NV tiếp theo
-            }
-            if (rs != null && rs.getObject(1) != null) {
-                rs.getStatement().getConnection().close();
-            }
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
+    public String selectMaxId() throws SQLException {
+    String sql = "SELECT MAX(CAST(SUBSTRING(MaKho, 2, LEN(MaKho) - 1) AS INT)) FROM KHO";
+    String newMaKho = "K01"; // Mặc định nếu bảng rỗng
+    ResultSet rs = null;
+    try {
+        rs = JDBCHelper.query(sql);
+        if (rs.next() && rs.getObject(1) != null) {
+            int maxMaKho = rs.getInt(1);
+            newMaKho = String.format("K%02d", maxMaKho + 1); // Định dạng mã với 2 chữ số
         }
-        return newMaKho;
+    } catch (SQLException e) {
+        throw new RuntimeException("Không thể lấy mã kho lớn nhất: " + e.getMessage(), e);
+    } finally {
+        JDBCHelper.close(rs); // Đóng tài nguyên an toàn
     }
+    return newMaKho;
+}
 
     public List<model_Kho> selectById(String maKho) {
         String sql = "SELECT * FROM Kho WHERE MaKho = ?";

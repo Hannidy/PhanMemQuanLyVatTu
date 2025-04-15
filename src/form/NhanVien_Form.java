@@ -10,6 +10,7 @@ import java.util.Set;
 import java.util.regex.Pattern;
 import javax.swing.JOptionPane;
 import javax.swing.RowFilter;
+import dao.LichSuHoatDongDAO;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.table.DefaultTableModel;
@@ -23,6 +24,7 @@ public class NhanVien_Form extends TabbedForm {
     public DefaultTableModel tbl_ModelNhanVien;
     private NhanVienDAO nvdao = new NhanVienDAO();
     private List<model_NhanVien> list_NhanVien = new ArrayList<model_NhanVien>();
+    private LichSuHoatDongDAO lshdDao = new LichSuHoatDongDAO();
 
     private String selectedTenNhanVien = "";  // Biến để lấy dữ liệu dòng
     private String selectedmaChucvu = "";  // Biến để lấy dữ liệu dòng
@@ -232,50 +234,47 @@ public class NhanVien_Form extends TabbedForm {
         });
     }
      
-     public void deleteNhanVien() {
-        int[] selectedRows = tbl_NhanVien.getSelectedRows(); // Lấy tất cả các dòng được chọn
+    public void deleteNhanVien() {
+        int[] selectedRows = tbl_NhanVien.getSelectedRows();
 
         if (selectedRows.length == 0) {
             Notifications.getInstance().show(Notifications.Type.INFO, "Chọn ít nhất một dòng để xóa!");
             return;
         }
 
-        boolean confirm = Message.confirm("Bạn có chắc chắn muốn xóa " + selectedRows.length + " Nhân Viên ?");
+        boolean confirm = Message.confirm("Bạn có chắc chắn muốn xóa " + selectedRows.length + " Nhân Viên?");
         if (!confirm) {
             return;
         }
 
         try {
-            List<String> danhSachXoa = new ArrayList<>(); // Lưu các nhân viên bị xóa để ghi vào thông báo
+            List<String> danhSachXoa = new ArrayList<>();
 
-            for (int i = selectedRows.length - 1; i >= 0; i--) { // Xóa từ dưới lên để tránh lỗi chỉ số
+            for (int i = selectedRows.length - 1; i >= 0; i--) {
                 int row = selectedRows[i];
                 String maNhanVien = tbl_NhanVien.getValueAt(row, 0).toString();
-                nvdao.delete(maNhanVien); // Xóa từng nhân viên 
-                danhSachXoa.add(maNhanVien); // Thêm vào danh sách để ghi nhận thông báo
+                nvdao.delete(maNhanVien);
+                danhSachXoa.add(maNhanVien);
             }
 
-            fillToTableNhanVien(); // Cập nhật lại bảng sau khi xóa
-            Notifications.getInstance().show(Notifications.Type.SUCCESS, "Đã xóa " + selectedRows.length + " Nhân Viên !");
+            fillToTableNhanVien();
+            Notifications.getInstance().show(Notifications.Type.SUCCESS, "Đã xóa " + selectedRows.length + " Nhân Viên!");
 
-            // 🔔 Cập nhật thông báo chuông sau khi hoàn tất tất cả các xóa
-            for (String maNhanVien : danhSachXoa) {
-                //themThongBao("Xóa", maNhanVien);
-            }
+            // Ghi vào bảng LICHSUHOATDONG
+            lshdDao.saveThaoTac("Xóa", "Nhân Viên", "Xóa " + selectedRows.length + " nhân viên, mã: " + String.join(", ", danhSachXoa));
 
         } catch (Exception e) {
-            Notifications.getInstance().show(Notifications.Type.INFO, "Không thể xóa vật tư!");
+            Notifications.getInstance().show(Notifications.Type.INFO, "Không thể xóa nhân viên!");
         }
     }
-      
-     public void updateNhanVien() {
+
+    public void updateNhanVien() {
         int row = tbl_NhanVien.getSelectedRow();
         if (row < 0) {
             Notifications.getInstance().show(Notifications.Type.INFO, "Chọn một dòng để cập nhật!");
             return;
         }
 
-        // Lấy dữ liệu từ JTable chỉ với 3 cột
         String maNV = tbl_NhanVien.getValueAt(row, 0).toString();
         String tenNV = tbl_NhanVien.getValueAt(row, 1).toString().trim();
         String maCV = tbl_NhanVien.getValueAt(row, 2).toString().trim();
@@ -284,35 +283,33 @@ public class NhanVien_Form extends TabbedForm {
         String sdt = tbl_NhanVien.getValueAt(row, 5).toString().trim();
         String trangthai = tbl_NhanVien.getValueAt(row, 6).toString().trim();
 
-        // Kiểm tra nếu có ô nào bị bỏ trống
-        if (tenNV.isEmpty() || maCV.isEmpty() || maPB.isEmpty() || email.isEmpty()|| sdt.isEmpty() ) {
+        if (tenNV.isEmpty() || maCV.isEmpty() || maPB.isEmpty() || email.isEmpty() || sdt.isEmpty()) {
             Notifications.getInstance().show(Notifications.Type.INFO, "Vui lòng nhập đầy đủ thông tin!");
             return;
         }
 
-        // Tạo đối tượng Nhan vien mới
         model_NhanVien nv = new model_NhanVien();
-            nv.setMaNhanVien(maNV);
-            nv.setTenNhanVien(tenNV);
-            nv.setMaChucVu(maCV);
-            nv.setMaPhongBan(maPB);
-            nv.setEmail(email);
-            nv.setSoDienthoai(sdt);
-            nv.setTrangThai(trangthai);
+        nv.setMaNhanVien(maNV);
+        nv.setTenNhanVien(tenNV);
+        nv.setMaChucVu(maCV);
+        nv.setMaPhongBan(maPB);
+        nv.setEmail(email);
+        nv.setSoDienthoai(sdt);
+        nv.setTrangThai(trangthai);
 
-        // Xác nhận cập nhật
         boolean confirm = Message.confirm("Bạn có chắc chắn muốn cập nhật nhân viên có mã '" + maNV + "'?");
         if (confirm) {
             try {
-                nvdao.update(nv); // Cập nhật vào CSDL
-                fillToTableNhanVien(); // Cập nhật lại bảng để hiển thị dữ liệu mới
+                nvdao.update(nv);
+                fillToTableNhanVien();
                 Notifications.getInstance().show(Notifications.Type.SUCCESS, "Cập nhật nhân viên thành công!");
 
-                // 🔔 Ghi nhận thông báo vào hệ thống chuông
-                //themThongBao("Cập nhật", tenVT);
+                // Ghi vào bảng LICHSUHOATDONG
+                lshdDao.saveThaoTac("Sửa", "Nhân Viên", "Sửa thông tin nhân viên với mã " + maNV);
+
             } catch (Exception e) {
                 Message.error("Lỗi: " + e.getMessage());
-                Notifications.getInstance().show(Notifications.Type.INFO, "Cập nhật nhân viên thất bại! duy ddep trai ");
+                Notifications.getInstance().show(Notifications.Type.INFO, "Cập nhật nhân viên thất bại!");
             }
         }
     }

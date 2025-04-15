@@ -17,6 +17,7 @@ import javax.swing.JTextField;
 import javax.swing.Timer;
 import javax.swing.table.DefaultTableModel;
 import raven.toast.Notifications;
+import dao.LichSuHoatDongDAO;
 
 /**
  *
@@ -26,6 +27,7 @@ public class DiaLog_Kho extends javax.swing.JDialog {
 
     private DefaultTableModel tbl_ModelKho;
     KhoDAO kDAO = new KhoDAO();
+    private LichSuHoatDongDAO lshdDao = new LichSuHoatDongDAO();
     private Kho_Form pnKhoRef;
     private List<model_Kho> list_Kho = new ArrayList<model_Kho>();
 
@@ -85,11 +87,9 @@ public class DiaLog_Kho extends javax.swing.JDialog {
     public void addKho() {
         boolean isValid = true;
 
-        // Reset viền trước khi kiểm tra
         resetBorder(txt_tenKho);
         resetBorder(txt_diaChi);
 
-        // Kiểm tra từng field
         String tenKho = txt_tenKho.getText().trim();
         if (tenKho.isEmpty()) {
             setErrorBorder(txt_tenKho);
@@ -100,36 +100,35 @@ public class DiaLog_Kho extends javax.swing.JDialog {
             isValid = false;
         }
 
-        // Nếu có lỗi, hiển thị thông báo và dừng lại
         if (!isValid) {
             Notifications.getInstance().show(Notifications.Type.INFO, "Vui lòng nhập đủ thông tin!");
             return;
         }
 
-        // 🔎 Kiểm tra tên đã tồn tại chưa
         if (kDAO.isTenKhoExist(tenKho)) {
-            Notifications.getInstance().show(Notifications.Type.INFO, "Tên loại vật tư đã tồn tại!");
+            Notifications.getInstance().show(Notifications.Type.INFO, "Tên kho đã tồn tại!");
             setErrorBorder(txt_tenKho);
             return;
         }
 
-        // Nếu hợp lệ, tiếp tục thêm kho
         model_Kho k = new model_Kho();
         k.setTenKho(txt_tenKho.getText().trim());
         k.setMaloaivatTu((String) cbo_maloaivatTu.getSelectedItem());
         k.setDiaChi(txt_diaChi.getText().trim());
 
         try {
+            String maKho = kDAO.selectMaxId(); // Lấy mã kho mới nhất
+            k.setMaKho(maKho);
             kDAO.insert(k);
             Notifications.getInstance().show(Notifications.Type.SUCCESS, "Thêm kho thành công!");
 
-            // 🔔 Cập nhật bảng nếu có tham chiếu đến pnKho
+            // Ghi vào bảng LICHSUHOATDONG
+            lshdDao.saveThaoTac("Thêm", "Kho", "Thêm kho mới với mã " + maKho);
+
             if (pnKhoRef != null) {
                 pnKhoRef.fillToTableKho();
-                //pnKhoRef.themThongBao("Thêm", k.getTenKho()); // Cập nhật thông báo
             }
 
-            // Đợi thông báo hiển thị xong rồi mới đóng form
             new Timer(1000, e -> dispose()).start();
 
         } catch (SQLException e) {

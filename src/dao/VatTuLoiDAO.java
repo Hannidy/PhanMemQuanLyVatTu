@@ -17,12 +17,12 @@ public List<model_VatTuLoi> selectAll() {
         vt.MaVatTu, 
         ncc.MaNhaCungCap,  
         ncc.TenNhaCungCap AS NhaCungCap,
-        bh.TrangThai  -- Lấy trạng thái từ bảng BAOHANH
+        bh.TrangThai
     FROM VATTU vt
     JOIN CHITIETPHIEUNHAP ctpn ON vt.MaVatTu = ctpn.MaVatTu
     JOIN PHIEUNHAP pn ON ctpn.MaPhieuNhap = pn.MaPhieuNhap
     JOIN NHACUNGCAP ncc ON pn.MaNhaCungCap = ncc.MaNhaCungCap
-    JOIN KHO k ON k.MaKho = k.MaKho
+    JOIN KHO k ON pn.MaKho = k.MaKho -- sửa join đúng
     LEFT JOIN BAOHANH bh ON bh.MaVatTu = vt.MaVatTu
     GROUP BY 
         k.MaKho, vt.MaVatTu, ncc.MaNhaCungCap, ncc.TenNhaCungCap, bh.TrangThai

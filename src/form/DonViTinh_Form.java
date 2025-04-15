@@ -5,6 +5,7 @@ import com.formdev.flatlaf.FlatClientProperties;
 import dao.DonViTinhDAO;
 import entity.model_DonViTinh;
 import java.util.ArrayList;
+import dao.LichSuHoatDongDAO;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -29,6 +30,7 @@ public Set<String> getDanhSachNhomVatTu() {
     return ds;
 }
     private DefaultTableModel tbl_ModelDonViTinh;
+    private LichSuHoatDongDAO lshdDao = new LichSuHoatDongDAO();
     private DonViTinhDAO dvtDAO = new DonViTinhDAO();
     private List<model_DonViTinh> list_DonViTinh = new ArrayList<>();
 private String selectedTenDonVi;
@@ -82,78 +84,91 @@ private String selectedNhomVatTu;
     }
 }
     public void deleteDonViTinh() {
-    int[] selectedRows = tbl_DonViTinh.getSelectedRows(); // Lấy tất cả các dòng được chọn
+        int[] selectedRows = tbl_DonViTinh.getSelectedRows(); // Lấy tất cả các dòng được chọn
 
-    if (selectedRows.length == 0) {
-        Notifications.getInstance().show(Notifications.Type.INFO, "Chọn ít nhất một dòng để xóa!");
-        return;
-    }
-
-    boolean confirm = Message.confirm("Bạn có chắc chắn muốn xóa " + selectedRows.length + " đơn vị tính?");
-    if (!confirm) {
-        return;
-    }
-
-    try {
-        List<Integer> danhSachXoa = new ArrayList<>(); // Lưu các mã đơn vị bị xóa
-
-        for (int i = selectedRows.length - 1; i >= 0; i--) { // Xóa từ dưới lên
-            int row = selectedRows[i];
-            int maDonVi = Integer.parseInt(tbl_DonViTinh.getValueAt(row, 0).toString());
-            dvtDAO.delete(maDonVi); // Gọi DAO xóa
-            danhSachXoa.add(maDonVi);
+        if (selectedRows.length == 0) {
+            Notifications.getInstance().show(Notifications.Type.INFO, "Chọn ít nhất một dòng để xóa!");
+            return;
         }
 
-        fillToTableDonViTinh(); // Refresh lại bảng
-        Notifications.getInstance().show(Notifications.Type.SUCCESS, "✅ Đã xóa " + selectedRows.length + " đơn vị tính!");
-
-        // 🔔 Ghi log nếu cần
-        for (Integer ma : danhSachXoa) {
-            // themThongBao("Xóa", String.valueOf(ma));
+        boolean confirm = Message.confirm("Bạn có chắc chắn muốn xóa " + selectedRows.length + " đơn vị tính?");
+        if (!confirm) {
+            return;
         }
 
-    } catch (Exception e) {
-        Notifications.getInstance().show(Notifications.Type.INFO, "❌ Không thể xóa đơn vị tính!");
-    }
-}
-    
-    public void updateDonViTinh() {
-    int row = tbl_DonViTinh.getSelectedRow();
-    if (row < 0) {
-        Notifications.getInstance().show(Notifications.Type.INFO, "Chọn một dòng để cập nhật!");
-        return;
-    }
-
-    // Lấy dữ liệu từ JTable chỉ với 3 cột
-    int maDonVi = Integer.parseInt(tbl_DonViTinh.getValueAt(row, 0).toString());
-    String tenDonVi = tbl_DonViTinh.getValueAt(row, 1).toString().trim();
-    String nhomVatTu = tbl_DonViTinh.getValueAt(row, 2).toString().trim();
-
-    // Kiểm tra nếu có ô nào bị bỏ trống
-    if (tenDonVi.isEmpty() || nhomVatTu.isEmpty()) {
-        Notifications.getInstance().show(Notifications.Type.INFO, "Vui lòng nhập đầy đủ thông tin!");
-        return;
-    }
-
-    // Tạo đối tượng Đơn Vị Tính mới
-    model_DonViTinh dvt = new model_DonViTinh();
-    dvt.setMaDonVi(maDonVi);
-    dvt.setTenDonVi(tenDonVi);
-    dvt.setNhomVatTu(nhomVatTu);
-
-    // Xác nhận cập nhật
-    boolean confirm = Message.confirm("Bạn có chắc chắn muốn cập nhật đơn vị tính có mã '" + maDonVi + "'?");
-    if (confirm) {
         try {
-            dvtDAO.update(dvt); // Cập nhật vào CSDL
-            fillToTableDonViTinh(); // Cập nhật lại bảng
-            Notifications.getInstance().show(Notifications.Type.SUCCESS, "✅ Cập nhật đơn vị tính thành công!");
+            List<Integer> danhSachXoa = new ArrayList<>(); // Lưu các mã đơn vị bị xóa
+
+            for (int i = selectedRows.length - 1; i >= 0; i--) { // Xóa từ dưới lên
+                int row = selectedRows[i];
+                int maDonVi = Integer.parseInt(tbl_DonViTinh.getValueAt(row, 0).toString());
+                dvtDAO.delete(maDonVi); // Gọi DAO xóa
+                danhSachXoa.add(maDonVi);
+            }
+
+            fillToTableDonViTinh(); // Refresh lại bảng
+            Notifications.getInstance().show(Notifications.Type.SUCCESS, "✅ Đã xóa " + selectedRows.length + " đơn vị tính!");
+
+            // Ghi vào bảng LICHSUHOATDONG
+            lshdDao.saveThaoTac("Xóa", "Đơn Vị Tính", "Xóa " + selectedRows.length + " đơn vị tính: " + danhSachXoa.toString());
+
+            // 🔔 Ghi log nếu cần
+            for (Integer ma : danhSachXoa) {
+                // themThongBao("Xóa", String.valueOf(ma));
+            }
+
         } catch (Exception e) {
-            Message.error("Lỗi: " + e.getMessage());
-            Notifications.getInstance().show(Notifications.Type.INFO, "❌ Cập nhật đơn vị tính thất bại!");
+            Notifications.getInstance().show(Notifications.Type.INFO, "❌ Không thể xóa đơn vị tính!");
+
+            // Ghi vào bảng LICHSUHOATDONG khi thất bại
+            lshdDao.saveThaoTac("Xóa thất bại", "Đơn Vị Tính", "Xóa " + selectedRows.length + " đơn vị tính thất bại");
         }
     }
-}
+
+    public void updateDonViTinh() {
+        int row = tbl_DonViTinh.getSelectedRow();
+        if (row < 0) {
+            Notifications.getInstance().show(Notifications.Type.INFO, "Chọn một dòng để cập nhật!");
+            return;
+        }
+
+        // Lấy dữ liệu từ JTable chỉ với 3 cột
+        int maDonVi = Integer.parseInt(tbl_DonViTinh.getValueAt(row, 0).toString());
+        String tenDonVi = tbl_DonViTinh.getValueAt(row, 1).toString().trim();
+        String nhomVatTu = tbl_DonViTinh.getValueAt(row, 2).toString().trim();
+
+        // Kiểm tra nếu có ô nào bị bỏ trống
+        if (tenDonVi.isEmpty() || nhomVatTu.isEmpty()) {
+            Notifications.getInstance().show(Notifications.Type.INFO, "Vui lòng nhập đầy đủ thông tin!");
+            return;
+        }
+
+        // Tạo đối tượng Đơn Vị Tính mới
+        model_DonViTinh dvt = new model_DonViTinh();
+        dvt.setMaDonVi(maDonVi);
+        dvt.setTenDonVi(tenDonVi);
+        dvt.setNhomVatTu(nhomVatTu);
+
+        // Xác nhận cập nhật
+        boolean confirm = Message.confirm("Bạn có chắc chắn muốn cập nhật đơn vị tính có mã '" + maDonVi + "'?");
+        if (confirm) {
+            try {
+                dvtDAO.update(dvt); // Cập nhật vào CSDL
+                fillToTableDonViTinh(); // Cập nhật lại bảng
+                Notifications.getInstance().show(Notifications.Type.SUCCESS, "✅ Cập nhật đơn vị tính thành công!");
+
+                // Ghi vào bảng LICHSUHOATDONG
+                lshdDao.saveThaoTac("Sửa", "Đơn Vị Tính", "Cập nhật đơn vị tính: Mã: " + maDonVi + ", Tên: " + tenDonVi);
+            } catch (Exception e) {
+                Message.error("Lỗi: " + e.getMessage());
+                Notifications.getInstance().show(Notifications.Type.INFO, "❌ Cập nhật đơn vị tính thất bại!");
+
+                // Ghi vào bảng LICHSUHOATDONG khi thất bại
+                lshdDao.saveThaoTac("Sửa thất bại", "Đơn Vị Tính", "Cập nhật đơn vị tính thất bại: Mã: " + maDonVi + ", Tên: " + tenDonVi);
+            }
+        }
+    }
+    
     public void addSearchFilterDonViTinh() {  // Gắn listener theo dõi thay đổi của txt_timKiem
     txt_timKiem.getDocument().addDocumentListener(new DocumentListener() {
         public void insertUpdate(DocumentEvent e) {

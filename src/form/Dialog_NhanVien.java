@@ -8,6 +8,7 @@ import dao.NhanVienDAO;
 import entity.model_NhanVien;
 import java.awt.Color;
 import java.awt.Dimension;
+import dao.LichSuHoatDongDAO;
 import java.awt.Font;
 import java.awt.Frame;
 import java.util.ArrayList;
@@ -29,6 +30,7 @@ public class Dialog_NhanVien extends javax.swing.JDialog {
     private DefaultTableModel tbl_ModelNhanVien;
     private NhanVienDAO nvdao = new NhanVienDAO();
     private List<model_NhanVien> list_NhanVien = new ArrayList<model_NhanVien>();
+    private LichSuHoatDongDAO lshdDao = new LichSuHoatDongDAO();
     private NhanVien_Form pnNhanVienRef;
     
     
@@ -126,60 +128,58 @@ public class Dialog_NhanVien extends javax.swing.JDialog {
     public void addNhanVien() {
         boolean isValid = true;
 
-        // Reset viền trước khi kiểm tra
         resetBorder(txt_TenNV);
         resetBorder(txt_email);
         resetBorder(txt_Sdt);
 
-        // Kiểm tra từng field
         String TenNV = txt_TenNV.getText().trim();
-        if (TenNV.isEmpty()) {
-            setErrorBorder(txt_TenNV);
-            setErrorBorder(txt_email);
-            setErrorBorder(txt_Sdt);
+        String email = txt_email.getText().trim();
+        String sdt = txt_Sdt.getText().trim();
+
+        if (TenNV.isEmpty() || email.isEmpty() || sdt.isEmpty()) {
+            if (TenNV.isEmpty()) setErrorBorder(txt_TenNV);
+            if (email.isEmpty()) setErrorBorder(txt_email);
+            if (sdt.isEmpty()) setErrorBorder(txt_Sdt);
             isValid = false;
         }
 
-        // Nếu có lỗi nhập liệu, hiển thị thông báo và dừng lại
         if (!isValid) {
             Notifications.getInstance().show(Notifications.Type.INFO, "Vui lòng nhập đủ thông tin!");
             return;
         }
 
-        // 🔎 Kiểm tra tên đã tồn tại chưa
         if (nvdao.isTenNhanVienExist(TenNV)) {
-            Notifications.getInstance().show(Notifications.Type.INFO, "Tên loại Nhân viên đã tồn tại!");
+            Notifications.getInstance().show(Notifications.Type.INFO, "Tên nhân viên đã tồn tại!");
             setErrorBorder(txt_TenNV);
             return;
         }
 
-        // Nếu hợp lệ, tiếp tục thêm vật tư
         model_NhanVien nv = new model_NhanVien();
-        nv.setTenNhanVien(txt_TenNV.getText().trim());
+        nv.setTenNhanVien(TenNV);
         nv.setMaChucVu((String) cbo_MaCV.getSelectedItem());
         nv.setMaPhongBan((String) cbo_MaPB.getSelectedItem());
-        nv.setEmail(txt_email.getText().trim());
-        nv.setSoDienthoai(txt_Sdt.getText().trim());
+        nv.setEmail(email);
+        nv.setSoDienthoai(sdt);
         nv.setTrangThai((String) cbo_TrangThai.getSelectedItem());
-        
-        
 
         try {
+            String maNV = nvdao.selectMaxId(); // Lấy mã nhân viên mới nhất
+            nv.setMaNhanVien(maNV); // Gán mã vào đối tượng
             nvdao.insert(nv);
             Notifications.getInstance().show(Notifications.Type.SUCCESS, "Thêm nhân viên thành công!");
 
-            // 🔔 Cập nhật bảng trong pnVatTu
+            // Ghi vào bảng LICHSUHOATDONG
+            lshdDao.saveThaoTac("Thêm", "Nhân Viên", "Thêm nhân viên mới với mã " + maNV);
+
             if (pnNhanVienRef != null) {
                 pnNhanVienRef.fillToTableNhanVien();
-                //pnLVTRef.themThongBao("Thêm", lvt.getTenLoaiVatTu()); // Cập nhật thông báo
             }
 
-            // Đợi thông báo hiển thị xong rồi mới đóng form
             new Timer(700, e -> dispose()).start();
 
         } catch (Exception e) {
             Notifications.getInstance().show(Notifications.Type.INFO, "Lỗi: " + e.getMessage());
-            Notifications.getInstance().show(Notifications.Type.INFO, "Thêm loại nhân viên thất bại!");
+            Notifications.getInstance().show(Notifications.Type.INFO, "Thêm nhân viên thất bại!");
         }
     }
 

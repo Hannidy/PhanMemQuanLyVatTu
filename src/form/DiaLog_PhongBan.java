@@ -14,6 +14,7 @@ import java.awt.Font;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
+import dao.LichSuHoatDongDAO;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -36,6 +37,7 @@ public class DiaLog_PhongBan extends javax.swing.JDialog {
     public PhongBanDAO pbdao = new PhongBanDAO();
     public List<model_PhongBan> list_PB = new ArrayList<model_PhongBan>();
     private PhongBan_Form pnPBRef;
+    private LichSuHoatDongDAO lshdDao = new LichSuHoatDongDAO();
 
     private static final String LOG_FILE = "phongban_log.txt";
     // Danh sách lưu trữ thông báo
@@ -101,20 +103,13 @@ public class DiaLog_PhongBan extends javax.swing.JDialog {
         resetBorder(this.txt_matruongPhong);
 
         String tenPhongban = txt_tenphongBan.getText().trim();
-        if (tenPhongban.isEmpty()) {
-            setErrorBorder(txt_tenphongBan);
-            isValid = false;
-        }
-        
         String diaChi = txt_diaChi.getText().trim();
-        if (diaChi.isEmpty()) {
-            setErrorBorder(txt_diaChi);
-            isValid = false;
-        }
-        
         String maTruongPhong = txt_matruongPhong.getText().trim();
-        if (maTruongPhong.isEmpty()) {
-            setErrorBorder(txt_matruongPhong);
+
+        if (tenPhongban.isEmpty() || diaChi.isEmpty() || maTruongPhong.isEmpty()) {
+            if (tenPhongban.isEmpty()) setErrorBorder(txt_tenphongBan);
+            if (diaChi.isEmpty()) setErrorBorder(txt_diaChi);
+            if (maTruongPhong.isEmpty()) setErrorBorder(txt_matruongPhong);
             isValid = false;
         }
 
@@ -133,44 +128,27 @@ public class DiaLog_PhongBan extends javax.swing.JDialog {
         pb.setTenphongBan(tenPhongban);
         pb.setDiaChi(diaChi);
         pb.setMatruongPhong(maTruongPhong);
-        
 
         try {
-            // Sinh mã vật tư trước khi insert
             String maPB = pbdao.selectMaxId();
-            pb.setMaphongBan(maPB); // Gán mã vào vt
-            pbdao.insert(pb); // Thêm vào CSDL
+            pb.setMaphongBan(maPB);
+            pbdao.insert(pb);
 
             Notifications.getInstance().show(Notifications.Type.SUCCESS, "Thêm phòng ban thành công!");
 
-            // Ghi log
-            String log = String.format("Thêm|%s|%s|%s|%s|%s",
-                    maPB,
-                    tenPhongban,
-                    diaChi,
-                    maTruongPhong,
-                    new SimpleDateFormat("HH:mm:ss dd/MM/yyyy").format(new Date()));
-            writeLogToFile(log);
+            // Ghi vào bảng LICHSUHOATDONG
+            lshdDao.saveThaoTac("Thêm", "Phòng Ban", "Thêm phòng ban mới với mã " + maPB);
 
             if (pnPBRef != null) {
                 pnPBRef.fillToTablePhongBan();
-               
             }
 
             new Timer(700, e -> dispose()).start();
 
         } catch (Exception e) {
-            Notifications.getInstance().show(Notifications.Type.INFO, "Thêm phòng ban thất bại!");
-            String log = String.format("Thêm thất bại|%s|%s|%s|%s|%s",
-                    pb.getMaphongBan()!= null ? pb.getMaphongBan() : "N/A",
-                    tenPhongban,
-                    diaChi,
-                    maTruongPhong,
-                    new SimpleDateFormat("HH:mm:ss dd/MM/yyyy").format(new Date()));
-            writeLogToFile(log);
-            if (pnPBRef != null) {
-               
-            }
+            Notifications.getInstance().show(Notifications.Type.INFO, "Thêm phòng ban thất bại: " + e.getMessage());
+            // Ghi vào bảng LICHSUHOATDONG khi thất bại
+            lshdDao.saveThaoTac("Thêm thất bại", "Phòng Ban", "Thêm phòng ban thất bại: " + tenPhongban);
         }
     }
 

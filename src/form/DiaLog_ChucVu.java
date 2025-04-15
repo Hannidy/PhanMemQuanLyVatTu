@@ -10,6 +10,7 @@ import com.formdev.flatlaf.themes.FlatMacDarkLaf;
 import dao.ChucVuDAO;
 import entity.model_ChucVu;
 import entity.model_VatTu;
+import dao.LichSuHoatDongDAO;
 import java.awt.Color;
 import java.awt.Font;
 import java.io.BufferedWriter;
@@ -35,6 +36,7 @@ public class DiaLog_ChucVu extends javax.swing.JDialog {
 
     private DefaultTableModel tbl_ModelChucVu;
     private ChucVuDAO cvdao = new ChucVuDAO();
+    private LichSuHoatDongDAO lshdDao = new LichSuHoatDongDAO();
     private List<model_ChucVu> list_chucVu = new ArrayList<model_ChucVu>();
     private ChucVu_Form pnChucVuRef;
 
@@ -112,23 +114,23 @@ public class DiaLog_ChucVu extends javax.swing.JDialog {
         cv.setTenChucVu(tenCV);
 
         try {
-            // Sinh mã vật tư trước khi insert
             String maCV = cvdao.selectMaxId();
-            cv.setMaChucVu(maCV); // Gán mã vào vt
-            cvdao.insert(cv); // Thêm vào CSDL
+            cv.setMaChucVu(maCV);
+            cvdao.insert(cv);
 
             Notifications.getInstance().show(Notifications.Type.SUCCESS, "Thêm chức vụ thành công!");
 
-            // Ghi log
+            // Ghi vào bảng LICHSUHOATDONG
+            lshdDao.saveThaoTac("Thêm", "Chức Vụ", "Thêm chức vụ mới với mã " + maCV);
+
+            // Ghi log vào file (giữ nguyên nếu bạn vẫn muốn dùng)
             String log = String.format("Thêm|%s|%s|%s",
-                    maCV,
-                    tenCV,
+                    maCV, tenCV,
                     new SimpleDateFormat("HH:mm:ss dd/MM/yyyy").format(new Date()));
             writeLogToFile(log);
 
             if (pnChucVuRef != null) {
                 pnChucVuRef.fillToTableChucVu();
-
             }
 
             new Timer(700, e -> dispose()).start();
@@ -136,13 +138,10 @@ public class DiaLog_ChucVu extends javax.swing.JDialog {
         } catch (Exception e) {
             Notifications.getInstance().show(Notifications.Type.INFO, "Thêm chức vụ thất bại!");
             String log = String.format("Thêm thất bại|%s|%s|%s",
-                    cv.getMaChucVu()!= null ?cv.getMaChucVu(): "N/A",
+                    cv.getMaChucVu() != null ? cv.getMaChucVu() : "N/A",
                     tenCV,
                     new SimpleDateFormat("HH:mm:ss dd/MM/yyyy").format(new Date()));
             writeLogToFile(log);
-            if (pnChucVuRef != null) {
-
-            }
         }
     }
 

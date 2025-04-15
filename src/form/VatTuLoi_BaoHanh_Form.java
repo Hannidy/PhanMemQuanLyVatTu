@@ -2,6 +2,7 @@
 package form;
 
 import dao.VatTuLoiDAO;
+import dao.LichSuHoatDongDAO;
 import entity.model_VatTuLoi;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -39,6 +40,7 @@ public class VatTuLoi_BaoHanh_Form extends TabbedForm {
     private BaoHanh_from baoHanhForm;
     private List<Object[]> danhSachGuiBaoHanh = new ArrayList<>();
     private static VatTuLoi_BaoHanh_Form instance;
+    private LichSuHoatDongDAO lshdDao = new LichSuHoatDongDAO();
     
     public VatTuLoi_BaoHanh_Form() {
         initComponents();
@@ -136,69 +138,40 @@ public void initTable() {
     });
 
 }
-//private void luuTrangThaiVaoFile() {
-//    Properties properties = new Properties();
-//    // Chuyển dữ liệu từ trangThaiMap sang Properties
-//    for (Map.Entry<String, String> entry : trangThaiMap.entrySet()) {
-//        properties.setProperty(entry.getKey(), entry.getValue());
-//    }
-//    // Lưu vào file
-//    try (FileOutputStream fos = new FileOutputStream("trangthai.properties")) {
-//        properties.store(fos, "Trạng thái vật tư lỗi");
-//    } catch (IOException e) {
-//        e.printStackTrace();
-//        JOptionPane.showMessageDialog(this, "Lỗi khi lưu trạng thái: " + e.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
-//    }
-//}
-//
-//private void docTrangThaiTuFile() {
-//    Properties properties = new Properties();
-//    File file = new File("trangthai.properties");
-//    if (!file.exists()) return;
-//
-//    try (FileInputStream fis = new FileInputStream(file)) {
-//        properties.load(fis);
-//        // Chuyển dữ liệu từ Properties sang trangThaiMap
-//        for (String key : properties.stringPropertyNames()) {
-//            trangThaiMap.put(key, properties.getProperty(key));
-//        }
-//    } catch (IOException e) {
-//        e.printStackTrace();
-//        JOptionPane.showMessageDialog(this, "Lỗi khi đọc trạng thái: " + e.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
-//    }
-//}
+
 private void xoaVatTuLoi() {
-    int selectedRow = tbl_VatTuLoi.getSelectedRow();
-    if (selectedRow == -1) {
-        JOptionPane.showMessageDialog(this, "Vui lòng chọn vật tư để xóa!");
-        return;
+        int selectedRow = tbl_VatTuLoi.getSelectedRow();
+        if (selectedRow == -1) {
+            JOptionPane.showMessageDialog(this, "Vui lòng chọn vật tư để xóa!");
+            return;
+        }
+
+        int modelRow = tbl_VatTuLoi.convertRowIndexToModel(selectedRow);
+        String trangThai = tbl_VatTuLoi.getValueAt(selectedRow, 4).toString();
+        String maVatTu = tbl_VatTuLoi.getValueAt(selectedRow, 1).toString();
+
+        if (trangThai.equalsIgnoreCase("Đang bảo hành") || trangThai.equalsIgnoreCase("Đã được bảo hành")) {
+            JOptionPane.showMessageDialog(this, "Không thể xóa vật tư đang bảo hành!");
+            return;
+        }
+
+        int confirm = JOptionPane.showConfirmDialog(
+            this,
+            "Bạn có chắc muốn xóa vật tư này khỏi danh sách hiển thị?",
+            "Xác nhận xóa",
+            JOptionPane.YES_NO_OPTION
+        );
+
+        if (confirm == JOptionPane.YES_OPTION) {
+            DefaultTableModel model = (DefaultTableModel) tbl_VatTuLoi.getModel();
+            model.removeRow(modelRow);
+
+            JOptionPane.showMessageDialog(this, "Đã xóa vật tư khỏi bảng hiển thị!");
+
+            // Ghi vào bảng LICHSUHOATDONG
+            lshdDao.saveThaoTac("Xóa", "Vật Tư Lỗi", "Xóa vật tư lỗi với mã " + maVatTu + " khỏi danh sách hiển thị");
+        }
     }
-
-    // Chuyển từ chỉ số hiển thị (view) sang model
-    int modelRow = tbl_VatTuLoi.convertRowIndexToModel(selectedRow);
-
-    // Lấy trạng thái ở cột "Trạng Thái" – giả sử là cột thứ 4 (index 3)
-    String trangThai = tbl_VatTuLoi.getValueAt(selectedRow, 4).toString();
-    if (trangThai.equalsIgnoreCase("Đang bảo hành") || trangThai.equalsIgnoreCase("Đã Được bảo hành")) {
-        JOptionPane.showMessageDialog(this, "Không thể xóa vật tư đang bảo hành!");
-        return;
-    }
-
-    int confirm = JOptionPane.showConfirmDialog(
-        this,
-        "Bạn có chắc muốn xóa vật tư này khỏi danh sách hiển thị?",
-        "Xác nhận xóa",
-        JOptionPane.YES_NO_OPTION
-    );
-
-    if (confirm == JOptionPane.YES_OPTION) {
-        // Xóa dòng trong JTable (không ảnh hưởng CSDL)
-        DefaultTableModel model = (DefaultTableModel) tbl_VatTuLoi.getModel();
-        model.removeRow(modelRow);
-
-        JOptionPane.showMessageDialog(this, "Đã xóa vật tư khỏi bảng hiển thị!");
-    }
-}
 
 public JTable getTbl_VatTuLoi() {
     return tbl_VatTuLoi;
@@ -287,7 +260,7 @@ private void addSearchButtonAction() {
         sorter.setRowFilter(RowFilter.regexFilter("(?i)" + Pattern.quote(keyword), columnIndex));
     });
 }
-  public void guiVatTuBaoHanh() {
+ public void guiVatTuBaoHanh() {
         DefaultTableModel modelLoi = (DefaultTableModel) tbl_VatTuLoi.getModel();
         int selectedRow = tbl_VatTuLoi.getSelectedRow();
 
@@ -307,8 +280,8 @@ private void addSearchButtonAction() {
             return;
         }
 
-        if (!trangThai.toString().equalsIgnoreCase("Chưa bảo hành")) {
-            JOptionPane.showMessageDialog(this, "Chỉ gửi vật tư có trạng thái 'Chưa bảo hành'");
+        if (!trangThai.toString().equalsIgnoreCase("Hàng lỗi")) {
+            JOptionPane.showMessageDialog(this, "Chỉ gửi vật tư có trạng thái 'Hàng lỗi'");
             return;
         }
 
@@ -319,14 +292,17 @@ private void addSearchButtonAction() {
         System.out.println("Đã thêm vào danhSachGuiBaoHanh: " + maVatTu);
 
         if (baoHanhForm == null) {
-            baoHanhForm = new BaoHanh_from(this.danhSachGuiBaoHanh); // truyền this để gọi getDanhSach
+            baoHanhForm = new BaoHanh_from(this.danhSachGuiBaoHanh);
         }
 
         baoHanhForm.setData(danhSachGuiBaoHanh);
 
         JOptionPane.showMessageDialog(this, "Đã gửi đi bảo hành");
 
+        // Ghi vào bảng LICHSUHOATDONG
+        lshdDao.saveThaoTac("Gửi Bảo Hành", "Vật Tư Lỗi", "Gửi bảo hành vật tư lỗi với mã " + maVatTu);
     }
+
 
 
 public List<Object[]> getDanhSachGuiBaoHanh() {
@@ -334,25 +310,30 @@ public List<Object[]> getDanhSachGuiBaoHanh() {
 }
 
 public void capNhatTrangThaiVatTu(String maKho, String maVatTu, String trangThai) {
-    DefaultTableModel model = (DefaultTableModel) tbl_VatTuLoi.getModel();
-    for (int i = 0; i < model.getRowCount(); i++) {
-        String tableMaKho = model.getValueAt(i, 0).toString();
-        String tableMaVatTu = model.getValueAt(i, 1).toString();
-        if (tableMaKho.equals(maKho) && tableMaVatTu.equals(maVatTu)) {
-            model.setValueAt(trangThai, i, 4); // Cột trạng thái là cột thứ 4 (index 4)
-            // Cập nhật trạng thái vào cơ sở dữ liệu nếu cần
-            try {
-                VatTuLoiDAO vatTuDao = new VatTuLoiDAO();
-                vatTuDao.updateTrangThai(maVatTu, trangThai);
-                System.out.println("Đã cập nhật trạng thái vật tư: MaVatTu=" + maVatTu + ", TrangThai=" + trangThai);
-            } catch (SQLException ex) {
-                ex.printStackTrace();
-                JOptionPane.showMessageDialog(this, "Lỗi khi cập nhật trạng thái: " + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+        DefaultTableModel model = (DefaultTableModel) tbl_VatTuLoi.getModel();
+        for (int i = 0; i < model.getRowCount(); i++) {
+            String tableMaKho = model.getValueAt(i, 0).toString();
+            String tableMaVatTu = model.getValueAt(i, 1).toString();
+            if (tableMaKho.equals(maKho) && tableMaVatTu.equals(maVatTu)) {
+                model.setValueAt(trangThai, i, 4);
+                try {
+                    VatTuLoiDAO vatTuDao = new VatTuLoiDAO();
+                    vatTuDao.updateTrangThai(maVatTu, trangThai);
+                    System.out.println("Đã cập nhật trạng thái vật tư: MaVatTu=" + maVatTu + ", TrangThai=" + trangThai);
+
+                    // Ghi vào bảng LICHSUHOATDONG
+                    lshdDao.saveThaoTac("Cập nhật trạng thái", "Vật Tư Lỗi", "Cập nhật trạng thái vật tư lỗi với mã " + maVatTu + " thành " + trangThai);
+
+                } catch (SQLException ex) {
+                    ex.printStackTrace();
+                    JOptionPane.showMessageDialog(this, "Lỗi khi cập nhật trạng thái: " + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+                }
+                break;
             }
-            break;
         }
     }
-}
+
+
 public List<Object[]> getDanhSachDangChoDuyet() {
     List<Object[]> danhSachDangChoDuyet = new ArrayList<>();
     DefaultTableModel model = (DefaultTableModel) tbl_VatTuLoi.getModel();

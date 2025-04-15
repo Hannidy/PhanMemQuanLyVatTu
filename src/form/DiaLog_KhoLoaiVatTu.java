@@ -9,6 +9,7 @@ import entity.model_KhoLoaiVatTu;
 import entity.model_LoaiVatTu;
 import java.util.List;
 import raven.toast.Notifications;
+import dao.LichSuHoatDongDAO;
 
 public class DiaLog_KhoLoaiVatTu extends javax.swing.JDialog {
 
@@ -16,6 +17,7 @@ private KhoDAO khoDao = new KhoDAO();
     private LoaiVatTuDAO loaiVatTuDao = new LoaiVatTuDAO();
     private Kho_LoaiVatTuDAO kltDao = new Kho_LoaiVatTuDAO();
     private Kho_LoaiVatTu_Form parentForm;
+    private LichSuHoatDongDAO lshdDao = new LichSuHoatDongDAO();
 
     public DiaLog_KhoLoaiVatTu(java.awt.Frame parent, boolean modal, Kho_LoaiVatTu_Form parentForm) {
         super(parent, modal);
@@ -53,43 +55,45 @@ private KhoDAO khoDao = new KhoDAO();
     }
 
     // Thêm bản ghi mới vào bảng KHO_LOAIVATTU
-    private void themKhoLoaiVatTu() {
+   private void themKhoLoaiVatTu() {
         try {
-            // Lấy đối tượng được chọn từ JComboBox
             model_Kho selectedKho = (model_Kho) cbo_MaKho.getSelectedItem();
             model_LoaiVatTu selectedLoaiVatTu = (model_LoaiVatTu) cbo_MaLoaiVatTu.getSelectedItem();
 
-            // Kiểm tra nếu không có mục nào được chọn
             if (selectedKho == null || selectedLoaiVatTu == null) {
                 Notifications.getInstance().show(Notifications.Type.WARNING, "Vui lòng chọn Kho và Loại Vật Tư!");
                 return;
             }
 
-            // Lấy mã từ đối tượng được chọn
             String maKho = selectedKho.getMaKho();
             String maLoaiVatTu = selectedLoaiVatTu.getMaloaivatTu();
 
-            // Kiểm tra nếu bản ghi đã tồn tại
             if (kltDao.isExist(maKho, maLoaiVatTu)) {
                 Notifications.getInstance().show(Notifications.Type.WARNING, "Bản ghi đã tồn tại!");
                 return;
             }
 
-            // Tạo đối tượng model_KhoLoaiVatTu và thêm vào cơ sở dữ liệu
             model_KhoLoaiVatTu klt = new model_KhoLoaiVatTu();
             klt.setMaKho(maKho);
             klt.setMaLoaiVatTu(maLoaiVatTu);
 
             kltDao.insert(klt);
             Notifications.getInstance().show(Notifications.Type.SUCCESS, "Thêm bản ghi thành công!");
-            
-            // Làm mới bảng trong form cha
+
+            // Ghi vào bảng LICHSUHOATDONG
+            lshdDao.saveThaoTac("Thêm", "Kho - Loại Vật Tư", "Thêm bản ghi với Mã Kho: " + maKho + ", Mã Loại Vật Tư: " + maLoaiVatTu);
+
             if (parentForm != null) {
                 parentForm.fillToTableKhoLoaiVatTu();
             }
-            this.dispose(); // Đóng dialog sau khi thêm thành công
+            this.dispose();
         } catch (Exception e) {
             Notifications.getInstance().show(Notifications.Type.ERROR, "Lỗi thêm bản ghi: " + e.getMessage());
+
+            // Ghi vào bảng LICHSUHOATDONG khi thất bại
+            String maKho = cbo_MaKho.getSelectedItem() != null ? ((model_Kho) cbo_MaKho.getSelectedItem()).getMaKho() : "N/A";
+            String maLoaiVatTu = cbo_MaLoaiVatTu.getSelectedItem() != null ? ((model_LoaiVatTu) cbo_MaLoaiVatTu.getSelectedItem()).getMaloaivatTu() : "N/A";
+            lshdDao.saveThaoTac("Thêm thất bại", "Kho - Loại Vật Tư", "Thêm bản ghi thất bại: Mã Kho: " + maKho + ", Mã Loại Vật Tư: " + maLoaiVatTu);
         }
     }
 

@@ -1,6 +1,7 @@
 package form;
 
 import dao.KhoDAO;
+import dao.LichSuHoatDongDAO;
 import entity.model_Kho;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -11,12 +12,15 @@ import javax.swing.table.DefaultTableModel;
 import tabbed.TabbedForm;
 import util.Message;
 import raven.toast.Notifications;
+import dao.LichSuHoatDongDAO;
 
 public class Kho_Form extends TabbedForm {
 
     private DefaultTableModel tbl_ModelKho;
     private KhoDAO kDAO = new KhoDAO();
+    private LichSuHoatDongDAO lshdDao = new LichSuHoatDongDAO();
     private List<model_Kho> list_Kho = new ArrayList<model_Kho>();
+
 
     private String selectedtenKho = "";  // Biến để lấy dữ liệu dòng
     private String selectedmaLoaiVatTu = "";  // Biến để lấy dữ liệu dòng
@@ -53,39 +57,36 @@ public class Kho_Form extends TabbedForm {
     }
 
     public void deleteKho() {
-        int[] selectedRows = tbl_Kho.getSelectedRows(); // Lấy tất cả các dòng được chọn
+        int[] selectedRows = tbl_Kho.getSelectedRows();
 
         if (selectedRows.length == 0) {
             Notifications.getInstance().show(Notifications.Type.INFO, "Chọn ít nhất một dòng để xóa!");
             return;
         }
 
-        boolean confirm = Message.confirm("Bạn có chắc chắn muốn xóa " + selectedRows.length + " vật tư?");
+        boolean confirm = Message.confirm("Bạn có chắc chắn muốn xóa " + selectedRows.length + " kho?");
         if (!confirm) {
             return;
         }
 
         try {
-            List<String> danhSachXoa = new ArrayList<>(); // Lưu các vật tư bị xóa để ghi vào thông báo
+            List<String> danhSachXoa = new ArrayList<>();
 
-            for (int i = selectedRows.length - 1; i >= 0; i--) { // Xóa từ dưới lên để tránh lỗi chỉ số
+            for (int i = selectedRows.length - 1; i >= 0; i--) {
                 int row = selectedRows[i];
-                String maVatTu = tbl_Kho.getValueAt(row, 0).toString();
-                kDAO.delete(maVatTu); // Xóa từng vật tư
-                danhSachXoa.add(maVatTu); // Thêm vào danh sách để ghi nhận thông báo
+                String maKho = tbl_Kho.getValueAt(row, 0).toString();
+                kDAO.delete(maKho);
+                danhSachXoa.add(maKho);
             }
 
-            fillToTableKho(); // Cập nhật lại bảng sau khi xóa
-            //thongke();
-            Notifications.getInstance().show(Notifications.Type.SUCCESS, "Đã xóa " + selectedRows.length + " vật tư!");
+            fillToTableKho();
+            Notifications.getInstance().show(Notifications.Type.SUCCESS, "Đã xóa " + selectedRows.length + " kho!");
 
-            // 🔔 Cập nhật thông báo chuông sau khi hoàn tất tất cả các xóa
-            for (String maKho : danhSachXoa) {
-                //themThongBao("Xóa", maKho);
-            }
+            // Ghi vào bảng LICHSUHOATDONG
+            lshdDao.saveThaoTac("Xóa", "Kho", "Xóa " + selectedRows.length + " kho, mã: " + String.join(", ", danhSachXoa));
 
         } catch (SQLException e) {
-            Notifications.getInstance().show(Notifications.Type.INFO, "Không thể xóa vật tư!");
+            Notifications.getInstance().show(Notifications.Type.INFO, "Không thể xóa kho!");
         }
     }
 
@@ -96,35 +97,32 @@ public class Kho_Form extends TabbedForm {
             return;
         }
 
-        // Lấy dữ liệu từ JTable
         String maKho = tbl_Kho.getValueAt(row, 0).toString();
         String tenKho = tbl_Kho.getValueAt(row, 1).toString();
         String maLoaiVT = tbl_Kho.getValueAt(row, 2).toString();
         String diaChi = tbl_Kho.getValueAt(row, 3).toString();
 
-        // Kiểm tra nếu có ô nào bị bỏ trống
         if (tenKho.isEmpty() || maLoaiVT.isEmpty() || diaChi.isEmpty()) {
             Notifications.getInstance().show(Notifications.Type.INFO, "Vui lòng nhập đầy đủ thông tin!");
             return;
         }
 
-        // Tạo đối tượng Kho mới
         model_Kho k = new model_Kho();
         k.setMaKho(maKho);
         k.setTenKho(tenKho);
         k.setMaloaivatTu(maLoaiVT);
         k.setDiaChi(diaChi);
 
-        // Xác nhận cập nhật
         boolean confirm = Message.confirm("Bạn có chắc chắn muốn cập nhật kho có mã '" + maKho + "'?");
         if (confirm) {
             try {
-                kDAO.update(k); // Cập nhật vào CSDL
-                fillToTableKho(); // Cập nhật lại bảng để hiển thị dữ liệu mới
+                kDAO.update(k);
+                fillToTableKho();
                 Notifications.getInstance().show(Notifications.Type.SUCCESS, "Cập nhật kho thành công!");
 
-                // 🔔 Ghi nhận thông báo vào hệ thống chuông
-                //themThongBao("Cập nhật", tenKho);
+                // Ghi vào bảng LICHSUHOATDONG
+                lshdDao.saveThaoTac("Sửa", "Kho", "Sửa thông tin kho với mã " + maKho);
+
             } catch (SQLException e) {
                 Message.error("Lỗi: " + e.getMessage());
                 Notifications.getInstance().show(Notifications.Type.INFO, "Cập nhật kho thất bại!");

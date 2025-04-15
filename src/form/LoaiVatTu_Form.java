@@ -18,6 +18,7 @@ import javax.swing.table.TableRowSorter;
 import tabbed.TabbedForm;
 import util.Message;
 import raven.toast.Notifications;
+import dao.LichSuHoatDongDAO;
 
 public class LoaiVatTu_Form extends TabbedForm {
 
@@ -26,6 +27,7 @@ public class LoaiVatTu_Form extends TabbedForm {
     private KhoDAO kDAO = new KhoDAO();
     private VatTuDAO vtDAO = new VatTuDAO();
     private List<model_LoaiVatTu> list_LoaiVatTu = new ArrayList<model_LoaiVatTu>();
+    private LichSuHoatDongDAO lshdDao = new LichSuHoatDongDAO();
     private String selectedTenLVT = "";  // Biến để lấy dữ liệu dòng
 
     public LoaiVatTu_Form() {
@@ -65,7 +67,7 @@ public class LoaiVatTu_Form extends TabbedForm {
     }
 
     public void deleteLoaiVatTu() {
-        int[] selectedRows = tbl_loaivatTu.getSelectedRows(); // Lấy các dòng được chọn
+        int[] selectedRows = tbl_loaivatTu.getSelectedRows();
 
         if (selectedRows.length == 0) {
             Notifications.getInstance().show(Notifications.Type.INFO, "Chọn ít nhất một dòng để xóa!");
@@ -85,7 +87,6 @@ public class LoaiVatTu_Form extends TabbedForm {
                 int row = selectedRows[i];
                 String maLoai = tbl_loaivatTu.getValueAt(row, 0).toString();
 
-                // ✅ Kiểm tra ràng buộc ở cả Kho và Vật tư
                 boolean dangDungTrongKho = kDAO.isMaLoaiDangDuocDungChoKho(maLoai);
                 boolean dangDungTrongVatTu = vtDAO.isMaLoaiDangDuocDungChoVatTu(maLoai);
 
@@ -105,15 +106,16 @@ public class LoaiVatTu_Form extends TabbedForm {
                     continue;
                 }
 
-                // Nếu không ràng buộc, tiến hành xóa
                 lvtdao.delete(maLoai);
                 danhSachXoa.add(maLoai);
             }
 
-            // ✅ Thông báo kết quả
             if (!danhSachXoa.isEmpty()) {
                 Notifications.getInstance().show(Notifications.Type.SUCCESS,
                         "Đã xóa " + danhSachXoa.size() + " loại vật tư!");
+
+                // Ghi vào bảng LICHSUHOATDONG
+                lshdDao.saveThaoTac("Xóa", "Loại Vật Tư", "Xóa " + danhSachXoa.size() + " loại vật tư, mã: " + String.join(", ", danhSachXoa));
             }
 
             if (!danhSachBiRangBuoc.isEmpty()) {
@@ -121,7 +123,7 @@ public class LoaiVatTu_Form extends TabbedForm {
                         "Không thể xóa do đang được sử dụng: " + String.join(", ", danhSachBiRangBuoc));
             }
 
-            fillToTableLoaiVatTu(); // Cập nhật lại bảng
+            fillToTableLoaiVatTu();
 
         } catch (Exception e) {
             Notifications.getInstance().show(Notifications.Type.INFO, "Lỗi khi xóa loại vật tư!");
@@ -136,31 +138,28 @@ public class LoaiVatTu_Form extends TabbedForm {
             return;
         }
 
-        // Lấy dữ liệu từ JTable chỉ với 3 cột
         String maLVT = tbl_loaivatTu.getValueAt(row, 0).toString();
         String tenLVT = tbl_loaivatTu.getValueAt(row, 1).toString().trim();
 
-        // Kiểm tra nếu có ô nào bị bỏ trống
         if (tenLVT.isEmpty() || maLVT.isEmpty()) {
             Notifications.getInstance().show(Notifications.Type.INFO, "Vui lòng nhập đầy đủ thông tin!");
             return;
         }
 
-        // Tạo đối tượng Vật Tư mới
         model_LoaiVatTu lvt = new model_LoaiVatTu();
         lvt.setMaloaivatTu(maLVT);
         lvt.setTenloaivatTu(tenLVT);
 
-        // Xác nhận cập nhật
         boolean confirm = Message.confirm("Bạn có chắc chắn muốn cập nhật loại vật tư có mã '" + maLVT + "'?");
         if (confirm) {
             try {
-                lvtdao.update(lvt); // Cập nhật vào CSDL
-                fillToTableLoaiVatTu(); // Cập nhật lại bảng để hiển thị dữ liệu mới
+                lvtdao.update(lvt);
+                fillToTableLoaiVatTu();
                 Notifications.getInstance().show(Notifications.Type.SUCCESS, "Cập nhật loại vật tư thành công!");
 
-                // 🔔 Ghi nhận thông báo vào hệ thống chuông
-//                themThongBao("Cập nhật", tenLVT);
+                // Ghi vào bảng LICHSUHOATDONG
+                lshdDao.saveThaoTac("Sửa", "Loại Vật Tư", "Sửa thông tin loại vật tư với mã " + maLVT);
+
             } catch (Exception e) {
                 Message.error("Lỗi: " + e.getMessage());
                 Notifications.getInstance().show(Notifications.Type.INFO, "Cập nhật loại vật tư thất bại!");

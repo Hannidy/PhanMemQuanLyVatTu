@@ -3,6 +3,7 @@ package form;
 import dao.ChucVuDAO;
 import entity.model_ChucVu;
 import entity.model_VatTu;
+import dao.LichSuHoatDongDAO;
 import java.awt.event.ActionListener;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -35,6 +36,7 @@ public class ChucVu_Form extends TabbedForm {
 
     public DefaultTableModel tbl_ModelChucVu;
     private ChucVuDAO cvdao = new ChucVuDAO();
+    private LichSuHoatDongDAO lshdDao = new LichSuHoatDongDAO();
     private List<model_ChucVu> list_ChucVu = new ArrayList<model_ChucVu>();
     private String selectedtenCV = "";
 
@@ -83,16 +85,12 @@ public class ChucVu_Form extends TabbedForm {
     }
 
     public void deleteChucVu() {
-        int rows = tbl_chucVu.getSelectedRow();
-        int[] selectedRows = tbl_chucVu.getSelectedRows(); // Lấy tất cả các dòng được chọn
+        int[] selectedRows = tbl_chucVu.getSelectedRows();
 
         if (selectedRows.length == 0) {
             Notifications.getInstance().show(Notifications.Type.INFO, "Chọn ít nhất một dòng để xóa!");
             return;
         }
-
-        String maCV = tbl_chucVu.getValueAt(rows, 0).toString();
-        String tenCV = tbl_chucVu.getValueAt(rows, 1).toString().trim();
 
         boolean confirm = Message.confirm("Bạn có chắc chắn muốn xóa " + selectedRows.length + " chức vụ?");
         if (!confirm) {
@@ -100,26 +98,31 @@ public class ChucVu_Form extends TabbedForm {
         }
 
         try {
-            List<String> danhSachXoa = new ArrayList<>(); // Lưu các vật tư bị xóa để ghi vào thông báo
+            List<String> danhSachXoa = new ArrayList<>();
 
-            for (int i = selectedRows.length - 1; i >= 0; i--) { // Xóa từ dưới lên để tránh lỗi chỉ số
+            for (int i = selectedRows.length - 1; i >= 0; i--) {
                 int row = selectedRows[i];
-                cvdao.delete(maCV); // Xóa từng vật tư
-                danhSachXoa.add(maCV); // Thêm vào danh sách để ghi nhận thông báo
+                String maCV = tbl_chucVu.getValueAt(row, 0).toString();
+                cvdao.delete(maCV);
+                danhSachXoa.add(maCV);
             }
 
-            fillToTableChucVu(); // Cập nhật lại bảng sau khi xóa
+            fillToTableChucVu();
             Notifications.getInstance().show(Notifications.Type.SUCCESS, "Đã xóa " + selectedRows.length + " chức vụ!");
 
+            // Ghi vào bảng LICHSUHOATDONG
+            lshdDao.saveThaoTac("Xóa", "Chức Vụ", "Xóa " + selectedRows.length + " chức vụ, mã: " + String.join(", ", danhSachXoa));
+
+            // Ghi log vào file (giữ nguyên)
             String log = String.format("Xóa|%s|%s|%s",
-                    maCV, tenCV,
+                    danhSachXoa.get(0), tbl_chucVu.getValueAt(selectedRows[0], 1).toString().trim(),
                     new SimpleDateFormat("HH:mm:ss dd/MM/yyyy").format(new Date()));
             writeLogToFile(log);
-            notificationCount++; // Tăng số thông báo
-            updateBellIcon(); // Cập nhật giao diện chuông
+            notificationCount++;
+            updateBellIcon();
 
         } catch (Exception e) {
-            Notifications.getInstance().show(Notifications.Type.INFO, "Không thể xóa vật tư!");
+            Notifications.getInstance().show(Notifications.Type.INFO, "Không thể xóa chức vụ!");
         }
     }
 
@@ -130,36 +133,35 @@ public class ChucVu_Form extends TabbedForm {
             return;
         }
 
-        // Lấy dữ liệu từ JTable chỉ với 3 cột
         String maCV = tbl_chucVu.getValueAt(row, 0).toString();
         String tenCV = tbl_chucVu.getValueAt(row, 1).toString().trim();
 
-        // Kiểm tra nếu có ô nào bị bỏ trống
         if (tenCV.isEmpty() || maCV.isEmpty()) {
             Notifications.getInstance().show(Notifications.Type.INFO, "Vui lòng nhập đầy đủ thông tin!");
             return;
         }
 
-        // Tạo đối tượng Vật Tư mới
         model_ChucVu cv = new model_ChucVu();
         cv.setMaChucVu(maCV);
         cv.setTenChucVu(tenCV);
 
-        // Xác nhận cập nhật
         boolean confirm = Message.confirm("Bạn có chắc chắn muốn cập nhật chức vụ có mã '" + maCV + "'?");
         if (confirm) {
             try {
-                cvdao.update(cv); // Cập nhật vào CSDL
-                fillToTableChucVu(); // Cập nhật lại bảng để hiển thị dữ liệu mới
+                cvdao.update(cv);
+                fillToTableChucVu();
                 Notifications.getInstance().show(Notifications.Type.SUCCESS, "Cập nhật chức vụ thành công!");
 
-                // 🔔 Ghi log vào file
+                // Ghi vào bảng LICHSUHOATDONG
+                lshdDao.saveThaoTac("Sửa", "Chức Vụ", "Sửa thông tin chức vụ với mã " + maCV);
+
+                // Ghi log vào file (giữ nguyên)
                 String log = String.format("Cập nhật|%s|%s|%s",
                         maCV, tenCV,
                         new SimpleDateFormat("HH:mm:ss dd/MM/yyyy").format(new Date()));
                 writeLogToFile(log);
-                notificationCount++; // Tăng số thông báo
-                updateBellIcon(); // Cập nhật giao diện chuông
+                notificationCount++;
+                updateBellIcon();
 
             } catch (Exception e) {
                 Message.error("Lỗi: " + e.getMessage());

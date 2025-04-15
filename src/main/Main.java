@@ -7,6 +7,7 @@ import com.formdev.flatlaf.FlatLightLaf;
 import com.formdev.flatlaf.fonts.roboto.FlatRobotoFont;
 import com.formdev.flatlaf.themes.FlatMacDarkLaf;
 import drawer.MyDrawerBuilder;
+import form.ThongKe_Form;
 import java.awt.Dimension;
 import java.awt.Font;
 import javax.swing.JFrame;
@@ -46,7 +47,7 @@ public class Main extends javax.swing.JFrame {
         WindowsTabbed.getInstance().install(this, body);
         
         // Thêm tab đầu tiên khi đăng nhập thành công
-//        WindowsTabbed.getInstance().addTab("Dashboard", new DashBoard_Form());
+        WindowsTabbed.getInstance().addTab("Dashboard", new ThongKe_Form());
     }
     @SuppressWarnings("unchecked")
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents

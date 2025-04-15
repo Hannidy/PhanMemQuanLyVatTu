@@ -203,7 +203,7 @@ public void duyetDong(JTable table) {
     table.setValueAt(trangThai, selectedRow, 3);
 
     // Lưu vào cơ sở dữ liệu
-    String sql = "INSERT INTO BAOHANH (MaVatTu, MaNhaCungCap, MaKho, TenVatTu, TrangThai, NgayDuyet) VALUES (?, ?, ?, ?, ?, GETDATE())";
+    String sql = "INSERT INTO BAOHANH (MaVatTu, MaNhaCungCap, MaKho, TenVatTu, TrangThai) VALUES (?, ?, ?, ?, ?)";
     try {
         // Lấy TenVatTu từ bảng VATTU
         String sqlTenVatTu = "SELECT TenVatTu FROM VATTU WHERE MaVatTu = ?";

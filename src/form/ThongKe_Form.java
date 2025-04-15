@@ -106,15 +106,7 @@ public class ThongKe_Form extends TabbedForm {
         add(lineChart);
     }
 
-//    private void createBarChart() {
-//        barChart1 = new HorizontalBarChart();
-//        barChart1.setHeader(new JLabel("Sẽ thêm sau"));
-//        add(barChart1, "split 2,gap 0 20");
-//
-//        barChart2 = new HorizontalBarChart();
-//        barChart2.setHeader(new JLabel("Sẽ thêm sau"));
-//        add(barChart2);
-//    }
+
 
     private void loadThongKe() {
         int thang = (int) cboThang.getSelectedItem();

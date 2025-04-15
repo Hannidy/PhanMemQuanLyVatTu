@@ -87,6 +87,8 @@ public class TonKho_Form extends TabbedForm {
             phieuluanchuyen phieuChuyen = new phieuluanchuyen(maVatTu, khoXuat);
             phieuChuyen.setDefaultCloseOperation(phieuluanchuyen.DISPOSE_ON_CLOSE);
             phieuChuyen.setVisible(true);
+        }else{
+            JOptionPane.showMessageDialog(this, "Vui lòng chọn kho để chuyển số lượng");
         }
     }
 
